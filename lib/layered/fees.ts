@@ -19,7 +19,7 @@ interface FeeDeps {
 function cfg(deps: FeeDeps) {
   return {
     rpcUrl: deps.rpcUrl ?? process.env.HOOD_TESTNET_RPC ?? "https://robinhood-sepolia-rpc.publicnode.com",
-    vault: (deps.vault ?? process.env.FEE_VAULT_ADDRESS ?? "").toLowerCase(),
+    vault: (deps.vault ?? process.env.FEE_VAULT_ADDRESS ?? FEE_VAULT_TESTNET).toLowerCase(),
     minWei: deps.minWei ?? BigInt(process.env.FEE_MIN_WEI ?? "100000000000000"),    supabaseUrl: deps.supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
     serviceKey: deps.serviceKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY,
     fetchFn: deps.fetchFn ?? fetch,
