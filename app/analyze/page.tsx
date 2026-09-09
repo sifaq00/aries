@@ -170,8 +170,14 @@ export default function Analyze() {
                       return;
                     }
                     const req = provider.request as (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-                    req({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${FEE_CHAIN_ID.toString(16)}` }] })
-                      .catch(() => undefined)
+                    const chainHex = `0x${FEE_CHAIN_ID.toString(16)}`;
+                    req({ method: "wallet_switchEthereumChain", params: [{ chainId: chainHex }] })
+                      .catch(() =>
+                        req({
+                          method: "wallet_addEthereumChain",
+                          params: [{ chainId: chainHex, chainName: "Robinhood Chain Testnet", nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://robinhood-sepolia-rpc.publicnode.com"], blockExplorerUrls: ["https://explorer.testnet.chain.robinhood.com"] }],
+                        })
+                      )
                       .then(() => req({ method: "eth_sendTransaction", params: [{ from: address, to: FEE_VAULT_TESTNET, value: `0x${FEE_PRICE_WEI.toString(16)}` }] }))
                       .then(async (hash) => {
                         if (typeof hash !== "string") {
@@ -184,9 +190,10 @@ export default function Analyze() {
                         if (ok) setPayTx(hash);
                         else setPayError("Payment tx failed on-chain — funds safe in your wallet. Repay to retry.");
                       })
-                      .catch(() => {
+                      .catch((err) => {
                         setVerifying(false);
-                        setPayError("Payment rejected.");
+                        const msg = err instanceof Error ? err.message : String(err);
+                        setPayError(`Payment rejected (${msg.slice(0, 120)}).`);
                       })
                       .finally(() => setPaying(false));
                   }}
