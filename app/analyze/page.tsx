@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useLayeredAnalysis } from "@/hooks/useLayeredAnalysis";
 import type { ChainId } from "@/lib/chains";
 import { FEE_CHAIN_ID, FEE_PRICE_WEI, FEE_VAULT_TESTNET } from "@/lib/layered/fees";
-import { useWallet } from "@/context/WalletContext";
+import { getEvmProvider, useWallet } from "@/context/WalletContext";
 import WalletButton from "@/components/WalletButton";
 import MintForm from "@/components/layered/MintForm";
 import HistorySection from "@/components/layered/HistorySection";
@@ -69,7 +69,7 @@ function Timeline({ step, note }: { step: LayeredState["step"]; note: string | n
 
 export default function Analyze() {
   const { state, start, retry, reset } = useLayeredAnalysis();
-  const { connected, address, setIsModalOpen } = useWallet();
+  const { connected, address, walletId, setIsModalOpen } = useWallet();
   const [chain, setChain] = useState<ChainId>("solana");
   const [payTx, setPayTx] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
@@ -156,13 +156,20 @@ export default function Analyze() {
                       setIsModalOpen(true);
                       return;
                     }
-                    if (!isEvmWallet || typeof window === "undefined" || !window.ethereum?.request) {
+                    if (!isEvmWallet) {
                       setPayError("Connect an EVM wallet to pay.");
                       return;
                     }
                     setPaying(true);
                     setPayError("");
-                    const req = window.ethereum.request as (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+                    // Pay through the CONNECTED wallet only — never window.ethereum directly.
+                    const provider = getEvmProvider(walletId);
+                    if (!provider?.request) {
+                      setPaying(false);
+                      setPayError("Connected wallet cannot pay. Reconnect via an EVM option.");
+                      return;
+                    }
+                    const req = provider.request as (args: { method: string; params?: unknown[] }) => Promise<unknown>;
                     req({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${FEE_CHAIN_ID.toString(16)}` }] })
                       .catch(() => undefined)
                       .then(() => req({ method: "eth_sendTransaction", params: [{ from: address, to: FEE_VAULT_TESTNET, value: `0x${FEE_PRICE_WEI.toString(16)}` }] }))

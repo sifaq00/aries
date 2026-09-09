@@ -21,7 +21,19 @@ declare global {
 }
 
 export type SolanaWalletId = "phantom" | "solflare" | "backpack" | "nightly";
+export type EvmRequest = (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+
 export type EvmWalletId = "rabby" | "metamask" | "coinbase" | "okx" | "trust" | "bitkeep" | "phantom-evm";
+
+export function getEvmProvider(id: string): { request?: EvmRequest } | null {
+  if (typeof window === "undefined") return null;
+  if (id === "phantom-evm") return window.phantom?.ethereum ?? null;
+  if (id === "coinbase") return window.coinbaseWalletExtension ?? null;
+  if (id === "okx") return window.okxwallet ?? null;
+  if (id === "trust") return window.trustwallet ?? null;
+  if (id === "bitkeep") return window.bitkeep?.ethereum ?? null;
+  return window.ethereum ?? null;
+}
 
 export interface SolanaWalletOption {
   id: SolanaWalletId;
@@ -130,6 +142,7 @@ export const EVM_WALLETS: EvmWalletOption[] = [
 interface WalletContextType {
   connected: boolean;
   address: string;
+  walletId: string;
   walletName: string;
   walletIcon: string | null;
   shortAddress: string;
@@ -144,10 +157,12 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined);
 const ADDR_KEY = "aries:wallet-address";
 const NAME_KEY = "aries:wallet-name";
 const ICON_KEY = "aries:wallet-icon";
+const ID_KEY = "aries:wallet-id";
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [address, setAddress] = useState("");
+  const [walletId, setWalletId] = useState("");
   const [walletName, setWalletName] = useState("Phantom");
   const [walletIcon, setWalletIcon] = useState<string | null>("/wallets/phantom.svg");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -159,6 +174,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const addr = localStorage.getItem(ADDR_KEY);
       if (addr) {
         setAddress(addr);
+        setWalletId(localStorage.getItem(ID_KEY) || "");
         setWalletName(localStorage.getItem(NAME_KEY) || "Phantom");
         setWalletIcon(localStorage.getItem(ICON_KEY) || "/wallets/phantom.svg");
         setConnected(true);
@@ -172,10 +188,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const connect = useCallback((wallet: WalletOption, addr: string) => {
     setConnected(true);
     setAddress(addr);
+    setWalletId(wallet.id);
     setWalletName(wallet.name);
     setWalletIcon(wallet.icon);
     try {
       localStorage.setItem(ADDR_KEY, addr);
+      localStorage.setItem(ID_KEY, wallet.id);
       localStorage.setItem(NAME_KEY, wallet.name);
       if (wallet.icon) localStorage.setItem(ICON_KEY, wallet.icon);
       else localStorage.removeItem(ICON_KEY);
@@ -187,8 +205,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const disconnect = useCallback(() => {
     setConnected(false);
     setAddress("");
+    setWalletId("");
     try {
       localStorage.removeItem(ADDR_KEY);
+      localStorage.removeItem(ID_KEY);
       localStorage.removeItem(NAME_KEY);
       localStorage.removeItem(ICON_KEY);
     } catch {
@@ -199,7 +219,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const shortAddress = address ? `${address.slice(0, 4)}...${address.slice(-4)}` : "";
 
   return (
-    <WalletContext.Provider value={{ connected, address, walletName, walletIcon, shortAddress, isModalOpen, setIsModalOpen, connect, disconnect }}>
+    <WalletContext.Provider value={{ connected, address, walletId, walletName, walletIcon, shortAddress, isModalOpen, setIsModalOpen, connect, disconnect }}>
       {children}
     </WalletContext.Provider>
   );

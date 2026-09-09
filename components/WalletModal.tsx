@@ -3,17 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
-import { SOLANA_WALLETS, EVM_WALLETS, useWallet, type WalletOption } from "@/context/WalletContext";
-
-function evmProvider(id: string): { request?: (args: { method: string }) => Promise<unknown> } | null {
-  if (typeof window === "undefined") return null;
-  if (id === "phantom-evm") return window.phantom?.ethereum ?? window.ethereum ?? null;
-  if (id === "coinbase") return window.coinbaseWalletExtension ?? window.ethereum ?? null;
-  if (id === "okx") return window.okxwallet ?? window.ethereum ?? null;
-  if (id === "trust") return window.trustwallet ?? window.ethereum ?? null;
-  if (id === "bitkeep") return window.bitkeep?.ethereum ?? window.ethereum ?? null;
-  return window.ethereum ?? null;
-}
+import { SOLANA_WALLETS, EVM_WALLETS, getEvmProvider, useWallet, type WalletOption } from "@/context/WalletContext";
 
 function solAddress(res: unknown): string {
   if (typeof res === "string") return res;
@@ -111,7 +101,7 @@ export default function WalletModal() {
           setErrorMessage("Nightly returned no address. Unlock and retry.");
         }
       } else if (wallet.id === "rabby" || wallet.id === "metamask" || wallet.id === "phantom-evm" || wallet.id === "coinbase" || wallet.id === "okx" || wallet.id === "trust" || wallet.id === "bitkeep") {
-        const provider = evmProvider(wallet.id);
+        const provider = getEvmProvider(wallet.id);
         const accounts = (await withTimeout(
           provider!.request!({ method: "eth_requestAccounts" }),
           12000,
