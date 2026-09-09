@@ -7,6 +7,7 @@ import { SOLANA_WALLETS, EVM_WALLETS, useWallet, type WalletOption } from "@/con
 
 function evmProvider(id: string): { request?: (args: { method: string }) => Promise<unknown> } | null {
   if (typeof window === "undefined") return null;
+  if (id === "phantom-evm") return window.phantom?.ethereum ?? window.ethereum ?? null;
   if (id === "coinbase") return window.coinbaseWalletExtension ?? window.ethereum ?? null;
   if (id === "okx") return window.okxwallet ?? window.ethereum ?? null;
   if (id === "trust") return window.trustwallet ?? window.ethereum ?? null;
@@ -93,7 +94,7 @@ export default function WalletModal() {
           connect(wallet, addr);
           setIsModalOpen(false);
         }
-      } else if (wallet.id === "rabby" || wallet.id === "metamask" || wallet.id === "coinbase" || wallet.id === "okx" || wallet.id === "trust" || wallet.id === "bitkeep") {
+      } else if (wallet.id === "rabby" || wallet.id === "metamask" || wallet.id === "phantom-evm" || wallet.id === "coinbase" || wallet.id === "okx" || wallet.id === "trust" || wallet.id === "bitkeep") {
         const provider = evmProvider(wallet.id);
         const accounts = (await withTimeout(
           provider!.request!({ method: "eth_requestAccounts" }),

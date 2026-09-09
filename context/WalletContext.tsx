@@ -5,7 +5,10 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 declare global {
   interface Window {
     solana?: { isPhantom?: boolean; connect?: () => Promise<{ publicKey?: { toString?: () => string } }> };
-    phantom?: { solana?: { isPhantom?: boolean; connect?: () => Promise<{ publicKey?: { toString?: () => string } }> } };
+    phantom?: {
+      solana?: { isPhantom?: boolean; connect?: () => Promise<{ publicKey?: { toString?: () => string } }> };
+      ethereum?: { request?: (args: { method: string }) => Promise<unknown> };
+    };
     solflare?: { isSolflare?: boolean; connect?: () => Promise<void>; publicKey?: { toString?: () => string } };
     backpack?: { connect?: () => Promise<{ publicKey?: { toString?: () => string } }> };
     nightly?: { solana?: { connect?: () => Promise<{ publicKey?: { toString?: () => string } }> } };
@@ -18,7 +21,7 @@ declare global {
 }
 
 export type SolanaWalletId = "phantom" | "solflare" | "backpack" | "nightly";
-export type EvmWalletId = "rabby" | "metamask" | "coinbase" | "okx" | "trust" | "bitkeep";
+export type EvmWalletId = "rabby" | "metamask" | "coinbase" | "okx" | "trust" | "bitkeep" | "phantom-evm";
 
 export interface SolanaWalletOption {
   id: SolanaWalletId;
@@ -83,6 +86,13 @@ export const EVM_WALLETS: EvmWalletOption[] = [
     icon: "/wallets/metamask.svg",
     installUrl: "https://metamask.io/",
     detect: () => Boolean(typeof window !== "undefined" && window.ethereum?.request),
+  },
+  {
+    id: "phantom-evm",
+    name: "Phantom (EVM)",
+    icon: "/wallets/phantom.svg",
+    installUrl: "https://phantom.app/",
+    detect: () => Boolean(typeof window !== "undefined" && window.phantom?.ethereum?.request),
   },
   {
     id: "coinbase",
