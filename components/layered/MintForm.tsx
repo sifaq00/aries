@@ -271,6 +271,10 @@ export default function MintForm({
           >
             Run analysis
           </button>
+        </div>
+      )}
+      {!disabled && (
+        <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-[10px] tracking-[0.18em] text-zinc-600 uppercase">try →</span>
           {SAMPLES[chain].map((s) => (
             <button
