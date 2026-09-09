@@ -28,6 +28,7 @@ interface Seed {
   net: ChainId;
   mint: string;
   wallet?: string;
+  payTx?: string;
   chain?: string;
   token?: L1Result["token"];
   symbol?: string;
@@ -82,7 +83,7 @@ export function useLayeredAnalysis() {
     let { token, symbol, reports, debate, risks, chain } = seed;
     if (from === "l1") {
       let done = 0;
-      const l1 = (await streamLayer("/api/l1", { chainId: net, mint, wallet: seed.wallet ?? null }, signal, (type, d) => {
+      const l1 = (await streamLayer("/api/l1", { chainId: net, mint, wallet: seed.wallet ?? null, payTx: seed.payTx ?? null }, signal, (type, d) => {
         if (type === "agent_report" && typeof d.agent === "string" && typeof d.report === "string") {
           done += 1;
           dispatch({ type: "NOTE", note: `L1 analysts ${done}/4 — ${d.agent} done` });
@@ -143,12 +144,12 @@ export function useLayeredAnalysis() {
   }, []);
 
   const start = useCallback(
-    (net: ChainId, mint: string, wallet?: string) => {
+    (net: ChainId, mint: string, wallet?: string, payTx?: string) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
       dispatch({ type: "START", chain: net, mint });
-      void runFrom("l1", { net, mint, wallet }, controller.signal).catch((err) => {
+      void runFrom("l1", { net, mint, wallet, payTx }, controller.signal).catch((err) => {
         if (controller.signal.aborted) return;
         const s = stateRef.current;
         const step: Step = s.step === "l1" || s.step === "l2" || s.step === "l3" || s.step === "l4" ? s.step : "l1";

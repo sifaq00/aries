@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useLayeredAnalysis } from "@/hooks/useLayeredAnalysis";
 import type { ChainId } from "@/lib/chains";
+import { FEE_CHAIN_ID, FEE_PRICE_WEI, FEE_VAULT_TESTNET } from "@/lib/layered/fees";
 import { useWallet } from "@/context/WalletContext";
 import WalletButton from "@/components/WalletButton";
 import MintForm from "@/components/layered/MintForm";
@@ -70,6 +71,10 @@ export default function Analyze() {
   const { state, start, retry, reset } = useLayeredAnalysis();
   const { connected, address, setIsModalOpen } = useWallet();
   const [chain, setChain] = useState<ChainId>("solana");
+  const [payTx, setPayTx] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState("");
+  const isEvmWallet = connected && address.startsWith("0x");
   const running = state.step === "l1" || state.step === "l2" || state.step === "l3" || state.step === "l4";
   const showFeed = running || state.step === "done" || state.step === "error";
   const done = state.step === "done" && state.decision && state.shareId;
@@ -122,17 +127,54 @@ export default function Analyze() {
                   </p>
                 )}
                 <MintForm
-                  disabled={false}
+                  disabled={paying}
                   chain={chain}
-                  onChain={setChain}
+                  onChain={(c) => {
+                    setChain(c);
+                    setPayTx(null);
+                    setPayError("");
+                  }}
+                  payTx={payTx}
+                  needPay
+                  isEvmWallet={isEvmWallet}
+                  onPay={() => {
+                    if (!connected) {
+                      setIsModalOpen(true);
+                      return;
+                    }
+                    if (!isEvmWallet || typeof window === "undefined" || !window.ethereum?.request) {
+                      setPayError("Connect an EVM wallet to pay.");
+                      return;
+                    }
+                    setPaying(true);
+                    setPayError("");
+                    const req = window.ethereum.request as (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+                    req({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${FEE_CHAIN_ID.toString(16)}` }] })
+                      .catch(() => undefined)
+                      .then(() => req({ method: "eth_sendTransaction", params: [{ from: address, to: FEE_VAULT_TESTNET, value: `0x${FEE_PRICE_WEI.toString(16)}` }] }))
+                      .then((hash) => {
+                        if (typeof hash === "string") setPayTx(hash);
+                        else setPayError("Payment rejected.");
+                      })
+                      .catch(() => setPayError("Payment rejected."))
+                      .finally(() => setPaying(false));
+                  }}
                   onStart={(c, mint) => {
                     if (!connected) {
                       setIsModalOpen(true);
                       return;
                     }
-                    start(c, mint, address);
+                    if (!payTx) return;
+                    setPayTx(null);
+                    start(c, mint, address, payTx);
                   }}
                 />
+                {paying && <p className="font-mono text-xs text-[#f59e0b]">Confirm payment in wallet…</p>}
+                {payError && (
+                  <p role="alert" className="font-mono text-xs text-[#ef4444]">
+                    {payError}
+                  </p>
+                )}
               </SectionPanel>
               {connected && (
                 <SectionPanel index="◈" title="Your reports" meta="this wallet">

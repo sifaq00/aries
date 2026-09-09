@@ -1,6 +1,7 @@
 import { runL1 } from "@/lib/layered/l1";
 import { isChainId, validateAddress } from "@/lib/chains";
 import { logEvent } from "@/lib/layered/supabase";
+import { verifyAndConsumePayment } from "@/lib/layered/fees";
 import { emitResult, sseResponse } from "@/lib/layered/sse";
 
 export const dynamic = "force-dynamic";
@@ -30,16 +31,22 @@ export async function POST(req: Request) {
   let chain: unknown;
   let mint: unknown;
   let wallet: unknown;
+  let payTx: unknown;
   try {
     const body = await req.json();
     chain = body.chainId ?? "solana";
     mint = body.mint;
     wallet = body.wallet;
+    payTx = body.payTx;
   } catch {
     return Response.json({ error: "Invalid request body" }, { status: 400 });
   }
   if (!isChainId(chain) || typeof mint !== "string" || !validateAddress(chain, mint)) {
     return Response.json({ error: "Invalid chain or address" }, { status: 400 });
+  }
+  if (process.env.FEE_ENFORCED !== "0") {
+    const fee = await verifyAndConsumePayment(payTx, wallet);
+    if (!fee.ok) return Response.json({ error: fee.reason ?? "Payment required" }, { status: 402 });
   }
   if (await rateLimited(req)) {
     return Response.json({ error: "Demo limit: 10 runs per hour per IP" }, { status: 429 });
