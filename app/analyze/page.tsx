@@ -74,7 +74,21 @@ export default function Analyze() {
   const [payTx, setPayTx] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const isEvmWallet = connected && address.startsWith("0x");
+
+  const waitReceiptOk = async (req: (args: { method: string; params?: unknown[] }) => Promise<unknown>, hash: string): Promise<boolean> => {
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      try {
+        const rc = (await req({ method: "eth_getTransactionReceipt", params: [hash] })) as { status?: string } | null;
+        if (rc) return rc.status === "0x1";
+      } catch {
+        // keep polling
+      }
+    }
+    return false;
+  };
   const running = state.step === "l1" || state.step === "l2" || state.step === "l3" || state.step === "l4";
   const showFeed = running || state.step === "done" || state.step === "error";
   const done = state.step === "done" && state.decision && state.shareId;
@@ -152,11 +166,21 @@ export default function Analyze() {
                     req({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${FEE_CHAIN_ID.toString(16)}` }] })
                       .catch(() => undefined)
                       .then(() => req({ method: "eth_sendTransaction", params: [{ from: address, to: FEE_VAULT_TESTNET, value: `0x${FEE_PRICE_WEI.toString(16)}` }] }))
-                      .then((hash) => {
-                        if (typeof hash === "string") setPayTx(hash);
-                        else setPayError("Payment rejected.");
+                      .then(async (hash) => {
+                        if (typeof hash !== "string") {
+                          setPayError("Payment rejected.");
+                          return;
+                        }
+                        setVerifying(true);
+                        const ok = await waitReceiptOk(req, hash);
+                        setVerifying(false);
+                        if (ok) setPayTx(hash);
+                        else setPayError("Payment tx failed on-chain — funds safe in your wallet. Repay to retry.");
                       })
-                      .catch(() => setPayError("Payment rejected."))
+                      .catch(() => {
+                        setVerifying(false);
+                        setPayError("Payment rejected.");
+                      })
                       .finally(() => setPaying(false));
                   }}
                   onStart={(c, mint) => {
@@ -169,7 +193,8 @@ export default function Analyze() {
                     start(c, mint, address, payTx);
                   }}
                 />
-                {paying && <p className="font-mono text-xs text-[#f59e0b]">Confirm payment in wallet…</p>}
+                {paying && !verifying && <p className="font-mono text-xs text-[#f59e0b]">Confirm payment in wallet…</p>}
+                {verifying && <p className="font-mono text-xs text-[#22c55e]">Confirming payment on-chain…</p>}
                 {payError && (
                   <p role="alert" className="font-mono text-xs text-[#ef4444]">
                     {payError}
