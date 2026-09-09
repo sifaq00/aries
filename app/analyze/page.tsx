@@ -178,7 +178,7 @@ export default function Analyze() {
                           params: [{ chainId: chainHex, chainName: "Robinhood Chain Testnet", nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 }, rpcUrls: ["https://robinhood-sepolia-rpc.publicnode.com"], blockExplorerUrls: ["https://explorer.testnet.chain.robinhood.com"] }],
                         })
                       )
-                      .then(() => req({ method: "eth_sendTransaction", params: [{ from: address, to: FEE_VAULT_TESTNET, value: `0x${FEE_PRICE_WEI.toString(16)}` }] }))
+                      .then(() => req({ method: "eth_sendTransaction", params: [{ from: address, to: FEE_VAULT_TESTNET, value: `0x${FEE_PRICE_WEI.toString(16)}`, data: "0x45fac178" }] }))
                       .then(async (hash) => {
                         if (typeof hash !== "string") {
                           setPayError("Payment rejected.");
