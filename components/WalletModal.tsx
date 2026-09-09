@@ -93,7 +93,7 @@ export default function WalletModal() {
           connect(wallet, addr);
           setIsModalOpen(false);
         }
-      } else if (wallet.id === "metamask" || wallet.id === "coinbase" || wallet.id === "okx" || wallet.id === "trust" || wallet.id === "bitkeep") {
+      } else if (wallet.id === "rabby" || wallet.id === "metamask" || wallet.id === "coinbase" || wallet.id === "okx" || wallet.id === "trust" || wallet.id === "bitkeep") {
         const provider = evmProvider(wallet.id);
         const accounts = (await withTimeout(
           provider!.request!({ method: "eth_requestAccounts" }),

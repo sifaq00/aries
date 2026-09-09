@@ -67,6 +67,9 @@ async function streamLayer(
 export function useLayeredAnalysis() {
   const [state, dispatch] = useReducer(layeredReducer, initialLayeredState);
   const abortRef = useRef<AbortController | null>(null);
+  // Last payment per run: retries reuse it, a fresh start replaces it.
+  const payTxRef = useRef<string | undefined>(undefined);
+  const walletRef = useRef<string | undefined>(undefined);
   const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
@@ -148,6 +151,8 @@ export function useLayeredAnalysis() {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
+      payTxRef.current = payTx;
+      walletRef.current = wallet;
       dispatch({ type: "START", chain: net, mint });
       void runFrom("l1", { net, mint, wallet, payTx }, controller.signal).catch((err) => {
         if (controller.signal.aborted) return;
@@ -165,7 +170,7 @@ export function useLayeredAnalysis() {
     const controller = new AbortController();
     abortRef.current = controller;
     const step = s.failedStep;
-    const seed: Seed = { net: s.chain, mint: s.mint, chain: step === "l2" ? s.chains.l1 : step === "l3" ? s.chains.l2 : step === "l4" ? s.chains.l3 : undefined, token: s.token ?? undefined, symbol: s.symbol, reports: s.reports ?? undefined, debate: s.debate, risks: s.risks ?? undefined };
+    const seed: Seed = { net: s.chain, mint: s.mint, wallet: walletRef.current, payTx: payTxRef.current, chain: step === "l2" ? s.chains.l1 : step === "l3" ? s.chains.l2 : step === "l4" ? s.chains.l3 : undefined, token: s.token ?? undefined, symbol: s.symbol, reports: s.reports ?? undefined, debate: s.debate, risks: s.risks ?? undefined };
     dispatch({ type: "RETRY" });
     void runFrom(step, seed, controller.signal).catch((err) => failRun(step, controller.signal, err));
   }, [runFrom, failRun]);

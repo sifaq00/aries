@@ -1,7 +1,7 @@
 import { runL1 } from "@/lib/layered/l1";
 import { isChainId, validateAddress } from "@/lib/chains";
 import { logEvent } from "@/lib/layered/supabase";
-import { verifyAndConsumePayment } from "@/lib/layered/fees";
+import { consumePayment, verifyPayment } from "@/lib/layered/fees";
 import { emitResult, sseResponse } from "@/lib/layered/sse";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid chain or address" }, { status: 400 });
   }
   if (process.env.FEE_ENFORCED !== "0") {
-    const fee = await verifyAndConsumePayment(payTx, wallet);
+    const fee = await verifyPayment(payTx, wallet);
     if (!fee.ok) return Response.json({ error: fee.reason ?? "Payment required" }, { status: 402 });
   }
   if (await rateLimited(req)) {
@@ -53,7 +53,15 @@ export async function POST(req: Request) {
   }
   void logEvent("run_started", wallet);
   return sseResponse((emit) =>
-    emitResult(emit, () => runL1(chain, mint, { signal: req.signal, emit: (e) => emit({ ...e }) }))
+    emitResult(emit, async () => {
+      const result = await runL1(chain, mint, { signal: req.signal, emit: (e) => emit({ ...e }) });
+      // Burn the ticket only after L1 succeeds: retries stay free.
+      if (process.env.FEE_ENFORCED !== "0" && typeof payTx === "string" && typeof wallet === "string") {
+        const v = await verifyPayment(payTx, wallet);
+        if (v.ok && v.amountWei) await consumePayment(payTx, wallet, v.amountWei);
+      }
+      return result;
+    })
   );
 }
 

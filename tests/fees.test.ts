@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { verifyAndConsumePayment } from "../lib/layered/fees";
+import { verifyAndConsumePayment, verifyPayment, consumePayment } from "../lib/layered/fees";
 
 const WALLET = "0xCdbdc82A021071eE445d9f897433a7E4B4EAfD8d";
 const TX = "0x" + "ab".repeat(32);
@@ -46,6 +46,16 @@ describe("verifyAndConsumePayment", () => {
   it("fails closed without config", async () => {
     const r = await verifyAndConsumePayment(TX, WALLET, { rpcUrl: "https://rpc.test", vault: "", supabaseUrl: undefined, serviceKey: undefined });
     expect(r.reason).toMatch(/not configured/);
+  });
+});
+
+describe("verify then consume", () => {
+  it("allows retry before burn, blocks after", async () => {
+    const fetchFn = mockFetch({ receipt: GOOD_RC, value: "0x16345785d8a0000" });
+    const deps = { ...DEPS, fetchFn };
+    expect((await verifyPayment(TX, WALLET, deps)).ok).toBe(true);
+    expect((await verifyPayment(TX, WALLET, deps)).ok).toBe(true); // retry still valid
+    expect((await consumePayment(TX, WALLET, "100000000000000", deps)).ok).toBe(true);
   });
 });
 

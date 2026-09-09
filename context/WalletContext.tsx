@@ -9,7 +9,7 @@ declare global {
     solflare?: { isSolflare?: boolean; connect?: () => Promise<void>; publicKey?: { toString?: () => string } };
     backpack?: { connect?: () => Promise<{ publicKey?: { toString?: () => string } }> };
     nightly?: { solana?: { connect?: () => Promise<{ publicKey?: { toString?: () => string } }> } };
-    ethereum?: { request?: (args: { method: string }) => Promise<unknown> };
+    ethereum?: { isRabby?: boolean; request?: (args: { method: string }) => Promise<unknown> };
     okxwallet?: { request?: (args: { method: string }) => Promise<unknown> };
     coinbaseWalletExtension?: { request?: (args: { method: string }) => Promise<unknown> };
     trustwallet?: { request?: (args: { method: string }) => Promise<unknown> };
@@ -18,7 +18,7 @@ declare global {
 }
 
 export type SolanaWalletId = "phantom" | "solflare" | "backpack" | "nightly";
-export type EvmWalletId = "metamask" | "coinbase" | "okx" | "trust" | "bitkeep";
+export type EvmWalletId = "rabby" | "metamask" | "coinbase" | "okx" | "trust" | "bitkeep";
 
 export interface SolanaWalletOption {
   id: SolanaWalletId;
@@ -70,6 +70,13 @@ export const SOLANA_WALLETS: SolanaWalletOption[] = [
 ];
 
 export const EVM_WALLETS: EvmWalletOption[] = [
+  {
+    id: "rabby",
+    name: "Rabby",
+    icon: null,
+    installUrl: "https://rabby.io/",
+    detect: () => Boolean(typeof window !== "undefined" && (window.ethereum?.isRabby || window.ethereum?.request)),
+  },
   {
     id: "metamask",
     name: "MetaMask",

@@ -36,12 +36,12 @@ async function rpc(fetchFn: typeof fetch, rpcUrl: string, method: string, params
   return (await res.json()) as unknown;
 }
 
-// Verify a vault payment tx, then burn it (single-use). Never throws.
-export async function verifyAndConsumePayment(
+// Verify a vault payment WITHOUT consuming it. Never throws.
+export async function verifyPayment(
   payTx: unknown,
   wallet: unknown,
   deps: FeeDeps = {}
-): Promise<FeeCheck> {
+): Promise<FeeCheck & { amountWei?: string }> {
   try {
     const c = cfg(deps);
     if (typeof payTx !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(payTx)) return { ok: false, reason: "Missing payment tx" };
@@ -60,22 +60,58 @@ export async function verifyAndConsumePayment(
     const tx = (await rpc(c.fetchFn, c.rpcUrl, "eth_getTransactionByHash", [payTx])) as {
       result?: { value?: string } | null;
     };
-    if (BigInt(tx.result?.value ?? "0x0") < c.minWei) return { ok: false, reason: "Payment below price" };
+    const amountWei = BigInt(tx.result?.value ?? "0x0").toString();
+    if (BigInt(amountWei) < c.minWei) return { ok: false, reason: "Payment below price" };
+    return { ok: true, amountWei };
+  } catch {
+    return { ok: false, reason: "Payment verification failed" };
+  }
+}
 
+async function alreadyUsed(fetchFn: typeof fetch, supabaseUrl: string, serviceKey: string, payTx: string): Promise<boolean> {
+  const head = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
+  const seen = await fetchFn(`${supabaseUrl}/rest/v1/payments?tx_hash=eq.${encodeURIComponent(payTx)}&select=tx_hash`, { headers: head });
+  if (!seen.ok) throw new Error("ledger unreachable");
+  return ((await seen.json()) as unknown[]).length > 0;
+}
+
+// Burn a verified payment (single-use). Never throws (returns reason).
+export async function consumePayment(
+  payTx: string,
+  wallet: string,
+  amountWei: string,
+  deps: FeeDeps = {}
+): Promise<FeeCheck> {
+  try {
+    const c = cfg(deps);
+    if (!c.supabaseUrl || !c.serviceKey) return { ok: false, reason: "Fee system not configured" };
     const head = { apikey: c.serviceKey, Authorization: `Bearer ${c.serviceKey}` };
-    const seen = await c.fetchFn(`${c.supabaseUrl}/rest/v1/payments?tx_hash=eq.${encodeURIComponent(payTx)}&select=tx_hash`, { headers: head });
-    if (!seen.ok) return { ok: false, reason: "Payment ledger unreachable" };
-    if (((await seen.json()) as unknown[]).length > 0) return { ok: false, reason: "Payment already used" };
-
     const ins = await c.fetchFn(`${c.supabaseUrl}/rest/v1/payments`, {
       method: "POST",
       headers: { ...head, "Content-Type": "application/json", Prefer: "return=minimal" },
-      body: JSON.stringify({ tx_hash: payTx, wallet: wallet.toLowerCase(), amount_wei: BigInt(tx.result?.value ?? "0x0").toString(), used_at: new Date().toISOString() }),
+      body: JSON.stringify({ tx_hash: payTx, wallet: wallet.toLowerCase(), amount_wei: amountWei, used_at: new Date().toISOString() }),
     });
     if (!ins.ok && ins.status !== 409) return { ok: false, reason: "Payment ledger write failed" };
     if (ins.status === 409) return { ok: false, reason: "Payment already used" };
     return { ok: true };
   } catch {
-    return { ok: false, reason: "Payment verification failed" };
+    return { ok: false, reason: "Payment ledger unreachable" };
   }
+}
+
+// Verify a vault payment tx, then burn it (single-use). Never throws.
+export async function verifyAndConsumePayment(
+  payTx: unknown,
+  wallet: unknown,
+  deps: FeeDeps = {}
+): Promise<FeeCheck> {
+  const v = await verifyPayment(payTx, wallet, deps);
+  if (!v.ok || typeof payTx !== "string" || typeof wallet !== "string" || !v.amountWei) return v;
+  const c = cfg(deps);
+  try {
+    if (await alreadyUsed(c.fetchFn, c.supabaseUrl!, c.serviceKey!, payTx)) return { ok: false, reason: "Payment already used" };
+  } catch {
+    return { ok: false, reason: "Payment ledger unreachable" };
+  }
+  return consumePayment(payTx, wallet, v.amountWei, deps);
 }
