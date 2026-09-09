@@ -78,7 +78,10 @@ export const EVM_WALLETS: EvmWalletOption[] = [
     name: "Rabby",
     icon: null,
     installUrl: "https://rabby.io/",
-    detect: () => Boolean(typeof window !== "undefined" && (window.ethereum?.isRabby || window.ethereum?.request)),
+    detect: () => {
+      if (typeof window === "undefined") return false;
+      return Boolean(window.ethereum?.isRabby);
+    },
   },
   {
     id: "metamask",

@@ -15,6 +15,14 @@ function evmProvider(id: string): { request?: (args: { method: string }) => Prom
   return window.ethereum ?? null;
 }
 
+function solAddress(res: unknown): string {
+  if (typeof res === "string") return res;
+  if (!res || typeof res !== "object") return "";
+  const o = res as { publicKey?: { toString?: () => string; toBase58?: () => string }; toBase58?: () => string };
+  const addr = o.publicKey?.toBase58?.() ?? o.publicKey?.toString?.() ?? (typeof o.toBase58 === "function" ? o.toBase58() : "");
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr ?? "") ? (addr as string) : "";
+}
+
 function getPhantomProvider() {
   if (typeof window === "undefined") return null;
   if (window.phantom?.solana?.isPhantom) return window.phantom.solana;
@@ -68,31 +76,39 @@ export default function WalletModal() {
       if (wallet.id === "phantom") {
         const provider = getPhantomProvider();
         const res = await withTimeout(provider!.connect!(), 12000, "Phantom connection timed out. Unlock your wallet.");
-        const addr = res?.publicKey?.toString?.();
+        const addr = solAddress(res);
         if (addr) {
           connect(wallet, addr);
           setIsModalOpen(false);
+        } else {
+          setErrorMessage("Phantom returned no address. Unlock and retry.");
         }
       } else if (wallet.id === "solflare" && window.solflare) {
         await withTimeout(window.solflare.connect!(), 12000, "Solflare connection timed out.");
-        const addr = window.solflare.publicKey?.toString?.();
+        const addr = solAddress(window.solflare.publicKey);
         if (addr) {
           connect(wallet, addr);
           setIsModalOpen(false);
+        } else {
+          setErrorMessage("Solflare returned no address. Unlock and retry.");
         }
       } else if (wallet.id === "backpack" && window.backpack) {
         const res = await withTimeout(window.backpack.connect!(), 12000, "Backpack connection timed out.");
-        const addr = res?.publicKey?.toString?.();
+        const addr = solAddress(res);
         if (addr) {
           connect(wallet, addr);
           setIsModalOpen(false);
+        } else {
+          setErrorMessage("Backpack returned no address. Unlock and retry.");
         }
       } else if (wallet.id === "nightly" && window.nightly?.solana) {
         const res = await withTimeout(window.nightly.solana.connect!(), 12000, "Nightly connection timed out.");
-        const addr = res?.publicKey?.toString?.();
+        const addr = solAddress(res);
         if (addr) {
           connect(wallet, addr);
           setIsModalOpen(false);
+        } else {
+          setErrorMessage("Nightly returned no address. Unlock and retry.");
         }
       } else if (wallet.id === "rabby" || wallet.id === "metamask" || wallet.id === "phantom-evm" || wallet.id === "coinbase" || wallet.id === "okx" || wallet.id === "trust" || wallet.id === "bitkeep") {
         const provider = evmProvider(wallet.id);
