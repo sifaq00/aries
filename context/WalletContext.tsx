@@ -91,7 +91,7 @@ export const EVM_WALLETS: EvmWalletOption[] = [
   {
     id: "rabby",
     name: "Rabby",
-    icon: null,
+    icon: "/wallets/rabby.svg",
     installUrl: "https://rabby.io/",
     detect: () => {
       if (typeof window === "undefined") return false;
