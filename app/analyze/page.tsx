@@ -151,7 +151,7 @@ export default function Analyze() {
                   payTx={payTx}
                   needPay
                   isEvmWallet={isEvmWallet}
-                  onPay={() => {
+                  onPay={(mint) => {
                     if (!connected) {
                       setIsModalOpen(true);
                       return;
@@ -187,8 +187,12 @@ export default function Analyze() {
                         setVerifying(true);
                         const ok = await waitReceiptOk(req, hash);
                         setVerifying(false);
-                        if (ok) setPayTx(hash);
-                        else setPayError("Payment tx failed on-chain — funds safe in your wallet. Repay to retry.");
+                        if (!ok) {
+                          setPayError("Payment tx failed on-chain — funds safe in your wallet. Repay to retry.");
+                          return;
+                        }
+                        // Paid → auto-start. One ticket covers L1-L4.
+                        start(chain, mint, address, hash);
                       })
                       .catch((err) => {
                         setVerifying(false);

@@ -50,7 +50,7 @@ export default function MintForm({
   onChain: (c: ChainId) => void;
   onStart: (chain: ChainId, mint: string) => void;
   payTx: string | null;
-  onPay: () => void;
+  onPay: (mint: string) => void;
   needPay: boolean;
   isEvmWallet: boolean;
 }) {
@@ -249,11 +249,11 @@ export default function MintForm({
           <button
             type="button"
             disabled={!canRun || !isEvmWallet}
-            onClick={onPay}
-            title={!isEvmWallet ? "Connect an EVM wallet to pay" : "Pay 0.0001 testnet ETH per run"}
+            onClick={() => onPay(trimmed)}
+            title={!isEvmWallet ? "Connect an EVM wallet to pay" : "Pay 0.0001 testnet ETH and auto-start"}
             className="cursor-pointer rounded border border-[#f59e0b] bg-[#f59e0b] px-5 py-2 font-mono text-sm font-bold text-black transition-colors hover:bg-transparent hover:text-[#f59e0b] disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-transparent disabled:text-zinc-600"
           >
-            Pay 0.0001 tETH
+            Pay & Run · 0.0001 tETH
           </button>
           {!isEvmWallet && (
             <span className="font-mono text-[11px] text-zinc-500">Fee vault lives on Hood testnet — connect an EVM wallet to pay.</span>
