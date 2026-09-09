@@ -12,7 +12,7 @@ declare global {
     solflare?: { isSolflare?: boolean; connect?: () => Promise<void>; publicKey?: { toString?: () => string } };
     backpack?: { connect?: () => Promise<{ publicKey?: { toString?: () => string } }> };
     nightly?: { solana?: { connect?: () => Promise<{ publicKey?: { toString?: () => string } }> } };
-    ethereum?: { isRabby?: boolean; request?: (args: { method: string }) => Promise<unknown> };
+    ethereum?: { isRabby?: boolean; isMetaMask?: boolean; request?: (args: { method: string }) => Promise<unknown> };
     okxwallet?: { request?: (args: { method: string }) => Promise<unknown> };
     coinbaseWalletExtension?: { request?: (args: { method: string }) => Promise<unknown> };
     trustwallet?: { request?: (args: { method: string }) => Promise<unknown> };
@@ -27,12 +27,15 @@ export type EvmWalletId = "rabby" | "metamask" | "coinbase" | "okx" | "trust" | 
 
 export function getEvmProvider(id: string): { request?: EvmRequest } | null {
   if (typeof window === "undefined") return null;
+  const eth = window.ethereum;
   if (id === "phantom-evm") return window.phantom?.ethereum ?? null;
   if (id === "coinbase") return window.coinbaseWalletExtension ?? null;
   if (id === "okx") return window.okxwallet ?? null;
   if (id === "trust") return window.trustwallet ?? null;
   if (id === "bitkeep") return window.bitkeep?.ethereum ?? null;
-  return window.ethereum ?? null;
+  if (id === "rabby") return eth?.isRabby ? eth : null;
+  if (id === "metamask") return eth && !eth.isRabby ? eth : null;
+  return eth ?? null;
 }
 
 export interface SolanaWalletOption {
@@ -100,7 +103,7 @@ export const EVM_WALLETS: EvmWalletOption[] = [
     name: "MetaMask",
     icon: "/wallets/metamask.svg",
     installUrl: "https://metamask.io/",
-    detect: () => Boolean(typeof window !== "undefined" && window.ethereum?.request),
+    detect: () => Boolean(typeof window !== "undefined" && window.ethereum?.isMetaMask && !window.ethereum?.isRabby),
   },
   {
     id: "phantom-evm",
@@ -230,3 +233,4 @@ export function useWallet() {
   if (!ctx) throw new Error("useWallet must be used within WalletProvider");
   return ctx;
 }
+

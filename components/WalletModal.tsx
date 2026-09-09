@@ -58,7 +58,21 @@ export default function WalletModal() {
       } catch {
         // popup blocked: ignore
       }
-      setErrorMessage(`${wallet.name} not detected. Install it, then try again.`);
+      const conflict =
+        typeof window !== "undefined" &&
+        Boolean(window.ethereum?.request) &&
+        (wallet.id === "rabby" ||
+          wallet.id === "metamask" ||
+          wallet.id === "phantom-evm" ||
+          wallet.id === "coinbase" ||
+          wallet.id === "okx" ||
+          wallet.id === "trust" ||
+          wallet.id === "bitkeep");
+      setErrorMessage(
+        conflict
+          ? "Another wallet controls the browser. Disable other EVM extensions or pick the active one."
+          : `${wallet.name} not detected. Install it, then try again.`
+      );
       setConnectingId(null);
       return;
     }
