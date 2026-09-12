@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useWallet } from "@/context/WalletContext";
+import { getEvmProvider, useWallet } from "@/context/WalletContext";
 
 export default function WalletButton() {
-  const { connected, address, shortAddress, walletIcon, walletName, setIsModalOpen, disconnect } = useWallet();
+  const { connected, address, shortAddress, walletIcon, walletName, walletId, setIsModalOpen, disconnect } = useWallet();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
@@ -12,14 +12,34 @@ export default function WalletButton() {
   const boxRef = useRef<HTMLDivElement | null>(null);
   const isEvm = address.startsWith("0x");
 
+  const CHAIN_SYMBOLS: Record<string, string> = {
+    "0x1": "ETH",
+    "0x38": "BNB",
+    "0x2105": "ETH",
+    "0xb626": "ETH",
+    "0x89": "POL",
+    "0xa": "ETH",
+    "0xa4b1": "ETH",
+  };
+
   const fetchBalance = async () => {
     if (!address) return;
     setRefreshing(true);
     try {
-      if (isEvm && typeof window !== "undefined" && window.ethereum?.request) {
-        const req = window.ethereum.request as (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-        const hex = (await req({ method: "eth_getBalance", params: [address, "latest"] })) as string;
-        setBalance(`${(Number(BigInt(hex)) / 1e18).toFixed(4)} native`);
+      if (isEvm && typeof window !== "undefined") {
+        const provider = getEvmProvider(walletId);
+        if (!provider?.request) {
+          setBalance("n/a");
+          setRefreshing(false);
+          return;
+        }
+        const req = provider.request as (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+        const [chainId, hex] = await Promise.all([
+          req({ method: "eth_chainId" }).catch(() => "0x1"),
+          req({ method: "eth_getBalance", params: [address, "latest"] }),
+        ]);
+        const symbol = CHAIN_SYMBOLS[String(chainId)] ?? "native";
+        setBalance(`${(Number(BigInt(hex as string)) / 1e18).toFixed(4)} ${symbol}`);
       } else if (!isEvm) {
         const endpoints = ["https://api.mainnet-beta.solana.com", "https://solana-rpc.publicnode.com"];
         let lamports: number | undefined;
