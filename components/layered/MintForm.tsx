@@ -44,6 +44,8 @@ export default function MintForm({
   onPay,
   needPay,
   isEvmWallet,
+  mode,
+  holdNote,
 }: {
   disabled: boolean;
   chain: ChainId;
@@ -53,6 +55,8 @@ export default function MintForm({
   onPay: (mint: string) => void;
   needPay: boolean;
   isEvmWallet: boolean;
+  mode: "fee" | "hold";
+  holdNote: string | null;
 }) {
   const [mint, setMint] = useState("");
   const [touched, setTouched] = useState(false);
@@ -244,7 +248,7 @@ export default function MintForm({
         </section>
       )}
 
-      {!disabled && needPay && !payTx && (
+      {!disabled && mode === "fee" && needPay && !payTx && (
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -260,7 +264,10 @@ export default function MintForm({
           )}
         </div>
       )}
-      {!disabled && (!needPay || payTx) && (
+      {!disabled && mode === "hold" && holdNote && (
+        <p className="font-mono text-xs text-[#22c55e]">{holdNote}</p>
+      )}
+      {!disabled && (mode === "hold" || !needPay || payTx) && (
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"

@@ -1,6 +1,7 @@
 import { runL1 } from "@/lib/layered/l1";
 import { isChainId, validateAddress } from "@/lib/chains";
-import { logEvent } from "@/lib/layered/supabase";
+import { bumpDailyUsage, dailyUsage, logEvent } from "@/lib/layered/supabase";
+import { checkHold } from "@/lib/layered/hold";
 import { consumePayment, verifyPayment } from "@/lib/layered/fees";
 import { emitResult, sseResponse } from "@/lib/layered/sse";
 
@@ -44,7 +45,19 @@ export async function POST(req: Request) {
   if (!isChainId(chain) || typeof mint !== "string" || !validateAddress(chain, mint)) {
     return Response.json({ error: "Invalid chain or address" }, { status: 400 });
   }
-  if (process.env.FEE_ENFORCED !== "0") {
+  // Hold-gate (opsi B) aktif otomatis saat token $ARIES ada.
+  // Sebelum itu, pay-per-run ETH (opsi C) tetap jalan.
+  let holdTier: 2 | 1 | 0 | -1 = -1;
+  if (process.env.ARIES_TOKEN_ADDRESS) {
+    if (typeof wallet !== "string") return Response.json({ error: "Wallet required" }, { status: 402 });
+    const hold = await checkHold(wallet);
+    holdTier = hold.tier;
+    if (hold.tier === -1) return Response.json({ error: "Hold check unavailable, retry shortly" }, { status: 503 });
+    if (hold.tier === 0) return Response.json({ error: "Hold at least 10,000 ARIES to analyze" }, { status: 402 });
+    if (hold.tier === 1 && (await dailyUsage(wallet)) >= 5) {
+      return Response.json({ error: "Daily limit reached (5/day). Hold 100,000 ARIES for unlimited." }, { status: 429 });
+    }
+  } else if (process.env.FEE_ENFORCED !== "0") {
     const fee = await verifyPayment(payTx, wallet);
     if (!fee.ok) return Response.json({ error: fee.reason ?? "Payment required" }, { status: 402 });
   }
@@ -55,8 +68,11 @@ export async function POST(req: Request) {
   return sseResponse((emit) =>
     emitResult(emit, async () => {
       const result = await runL1(chain, mint, { signal: req.signal, emit: (e) => emit({ ...e }) });
-      // Burn the ticket only after L1 succeeds: retries stay free.
-      if (process.env.FEE_ENFORCED !== "0" && typeof payTx === "string" && typeof wallet === "string") {
+      if (process.env.ARIES_TOKEN_ADDRESS) {
+        // Hold path: count quota AFTER success (retries stay free).
+        if (holdTier === 1 && typeof wallet === "string") await bumpDailyUsage(wallet);
+      } else if (process.env.FEE_ENFORCED !== "0" && typeof payTx === "string" && typeof wallet === "string") {
+        // Fee path: burn the ticket only after L1 succeeds (retries stay free).
         const v = await verifyPayment(payTx, wallet);
         if (v.ok && v.amountWei) await consumePayment(payTx, wallet, v.amountWei);
       }

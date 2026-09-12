@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLayeredAnalysis } from "@/hooks/useLayeredAnalysis";
 import type { ChainId } from "@/lib/chains";
 import { FEE_CHAIN_ID, FEE_PRICE_WEI, FEE_VAULT_TESTNET } from "@/lib/layered/fees";
@@ -75,7 +75,29 @@ export default function Analyze() {
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [gate, setGate] = useState<{ mode: "fee" } | { mode: "hold"; tier: number; left?: number }>({ mode: "fee" });
   const isEvmWallet = connected && address.startsWith("0x");
+
+  /* eslint-disable react-hooks/set-state-in-effect -- external gate fetch per wallet */
+  useEffect(() => {
+    if (!connected) {
+      setGate({ mode: "fee" });
+      return;
+    }
+    let alive = true;
+    fetch(`/api/gate?wallet=${encodeURIComponent(address)}`)
+      .then((r) => (r.ok ? r.json() : { mode: "fee" }))
+      .then((g) => {
+        if (alive) setGate(g.mode === "hold" ? { mode: "hold", tier: g.tier ?? -1, left: g.left } : { mode: "fee" });
+      })
+      .catch(() => {
+        if (alive) setGate({ mode: "fee" });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [connected, address]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const waitReceiptOk = async (req: (args: { method: string; params?: unknown[] }) => Promise<unknown>, hash: string): Promise<boolean> => {
     for (let i = 0; i < 20; i++) {
@@ -151,6 +173,16 @@ export default function Analyze() {
                   payTx={payTx}
                   needPay
                   isEvmWallet={isEvmWallet}
+                  mode={gate.mode}
+                  holdNote={
+                    gate.mode === "hold"
+                      ? gate.tier === 2
+                        ? "Tier 2 · unlimited runs"
+                        : gate.tier === 1
+                          ? `Tier 1 · ${gate.left ?? "?"} runs left today`
+                          : "Hold at least 10,000 ARIES to unlock runs"
+                      : null
+                  }
                   onPay={(mint) => {
                     if (!connected) {
                       setIsModalOpen(true);

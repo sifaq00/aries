@@ -153,3 +153,57 @@ export async function walletStats(
     return fallback;
   }
 }
+
+function todayUTC(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Daily run counter for hold tiers. Returns runs used today. Never throws.
+export async function dailyUsage(
+  wallet: string,
+  deps: { url?: string; serviceKey?: string; fetchFn?: typeof fetch } = {}
+): Promise<number> {
+  try {
+    if (!validWallet(wallet)) return 0;
+    const url = deps.url ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = deps.serviceKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !serviceKey) return 0;
+    const fetchFn = deps.fetchFn ?? fetch;
+    const res = await fetchFn(
+      `${url}/rest/v1/usage?wallet=eq.${encodeURIComponent(wallet.toLowerCase())}&day=eq.${todayUTC()}&select=runs`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+    );
+    if (!res.ok) return 0;
+    const data = (await res.json()) as { runs?: number }[];
+    return data[0]?.runs ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+// Increment today's counter (upsert). Never throws.
+export async function bumpDailyUsage(
+  wallet: string,
+  deps: { url?: string; serviceKey?: string; fetchFn?: typeof fetch } = {}
+): Promise<void> {
+  try {
+    if (!validWallet(wallet)) return;
+    const url = deps.url ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = deps.serviceKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !serviceKey) return;
+    const fetchFn = deps.fetchFn ?? fetch;
+    const used = await dailyUsage(wallet, deps);
+    await fetchFn(`${url}/rest/v1/usage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        Prefer: "resolution=merge-duplicates",
+      },
+      body: JSON.stringify({ wallet: wallet.toLowerCase(), day: todayUTC(), runs: used + 1 }),
+    });
+  } catch {
+    // ignore
+  }
+}
