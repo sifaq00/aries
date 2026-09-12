@@ -8,6 +8,7 @@ export default function WalletButton() {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
+  const [tokenBal, setTokenBal] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const boxRef = useRef<HTMLDivElement | null>(null);
   const isEvm = address.startsWith("0x");
@@ -40,6 +41,25 @@ export default function WalletButton() {
         ]);
         const symbol = CHAIN_SYMBOLS[String(chainId)] ?? "native";
         setBalance(`${(Number(BigInt(hex as string)) / 1e18).toFixed(4)} ${symbol}`);
+        // Fee/hold token balances (test drill + mainnet $ARIES when configured).
+        try {
+          const tokens = [
+            { addr: "0x901fc7e22b7bc7353c66f0344a521e6533bf665f", label: "ARDRILL" },
+            ...(process.env.NEXT_PUBLIC_ARIES_TOKEN
+              ? [{ addr: process.env.NEXT_PUBLIC_ARIES_TOKEN, label: "ARIES" }]
+              : []),
+          ];
+          const rows: string[] = [];
+          for (const t of tokens) {
+            const data = `0x70a08231${"0".repeat(24)}${address.slice(2).toLowerCase()}`;
+            const out = (await req({ method: "eth_call", params: [{ to: t.addr, data }, "latest"] })) as string;
+            const amt = Number(BigInt(out)) / 1e18;
+            if (amt > 0) rows.push(`${amt.toFixed(0)} ${t.label}`);
+          }
+          setTokenBal(rows.length ? rows.join(" · ") : null);
+        } catch {
+          setTokenBal(null);
+        }
       } else if (!isEvm) {
         const endpoints = ["https://api.mainnet-beta.solana.com", "https://solana-rpc.publicnode.com"];
         let lamports: number | undefined;
@@ -167,6 +187,12 @@ export default function WalletButton() {
               </button>
             </p>
           </div>
+          {tokenBal && (
+            <div className="mt-2 flex items-center justify-between rounded border border-zinc-800 bg-black px-2 py-1.5">
+              <p className="font-mono text-[10px] tracking-wider text-zinc-500 uppercase">Tokens</p>
+              <p className="font-mono text-xs font-bold text-[#22c55e]">{tokenBal}</p>
+            </div>
+          )}
           <a
             href={isEvm ? `https://etherscan.io/address/${address}` : `https://solscan.io/account/${address}`}
             target="_blank"
