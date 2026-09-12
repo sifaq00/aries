@@ -174,6 +174,7 @@ export default function Analyze() {
                   needPay
                   isEvmWallet={isEvmWallet}
                   mode={gate.mode}
+                  walletReady={connected}
                   holdNote={
                     gate.mode === "hold"
                       ? gate.tier === 2

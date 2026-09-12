@@ -46,6 +46,7 @@ export default function MintForm({
   isEvmWallet,
   mode,
   holdNote,
+  walletReady,
 }: {
   disabled: boolean;
   chain: ChainId;
@@ -57,6 +58,7 @@ export default function MintForm({
   isEvmWallet: boolean;
   mode: "fee" | "hold";
   holdNote: string | null;
+  walletReady: boolean;
 }) {
   const [mint, setMint] = useState("");
   const [touched, setTouched] = useState(false);
@@ -248,7 +250,10 @@ export default function MintForm({
         </section>
       )}
 
-      {!disabled && mode === "fee" && needPay && !payTx && (
+      {!disabled && !walletReady && (
+        <p className="font-mono text-xs text-zinc-500">Connect a wallet above to unlock Pay & Run.</p>
+      )}
+      {!disabled && walletReady && mode === "fee" && needPay && !payTx && (
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
