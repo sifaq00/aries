@@ -29,7 +29,7 @@ SUPABASE_SERVICE_ROLE_KEY=<service-key>      # server-only write (never to brows
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 CHAIN_SECRET=<random-32-chars>               # layer chain HMAC (any secret works locally)
 # Hold-gate (opsi B): empty = fee mode. Set mainnet $ARIES to enable.
-ARIES_TOKEN_ADDRESS=                         # 0x... mainnet, plus HOOD_MAINNET_RPC/HOLD_TIER1/HOLD_TIER2
+ARIES_TOKEN_ADDRESS=                         # mainnet $ARIES, plus HOOD_MAINNET_RPC
 ```
 
 Create table `reports` once (Supabase SQL editor or any postgres client):
