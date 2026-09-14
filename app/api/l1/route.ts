@@ -45,8 +45,8 @@ export async function POST(req: Request) {
   if (!isChainId(chain) || typeof mint !== "string" || !validateAddress(chain, mint)) {
     return Response.json({ error: "Invalid chain or address" }, { status: 400 });
   }
-  // Hold-gate (opsi B) aktif otomatis saat token $ARIES ada.
-  // Sebelum itu, pay-per-run ETH (opsi C) tetap jalan.
+  // Hold-gate goes live automatically when the $ARIES token is set.
+  // Until then, ETH pay-per-run stays active.
   let holdTier: 2 | 1 | 0 | -1 = -1;
   if (process.env.ARIES_TOKEN_ADDRESS) {
     if (typeof wallet !== "string") return Response.json({ error: "Wallet required" }, { status: 402 });

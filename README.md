@@ -28,7 +28,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>     # public read
 SUPABASE_SERVICE_ROLE_KEY=<service-key>      # server-only write (never to browser)
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 CHAIN_SECRET=<random-32-chars>               # layer chain HMAC (any secret works locally)
-# Hold-gate (opsi B): empty = fee mode. Set mainnet $ARIES to enable.
+# Hold-gate: empty = fee mode. Set mainnet $ARIES to enable.
 ARIES_TOKEN_ADDRESS=                         # mainnet $ARIES, plus HOOD_MAINNET_RPC
 ```
 

@@ -3,7 +3,7 @@ import { dailyUsage } from "@/lib/layered/supabase";
 
 export const dynamic = "force-dynamic";
 
-// Tells the UI which gate is live: hold-to-access (opsi B) or pay-per-run (opsi C).
+// Tells the UI which gate is live: hold-to-access or pay-per-run.
 export async function GET(req: Request) {
   if (!process.env.ARIES_TOKEN_ADDRESS) {
     return Response.json({ mode: "fee" as const });
