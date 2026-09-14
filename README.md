@@ -7,7 +7,7 @@ Research background: "TradingAgents: Multi-Agents LLM Financial Trading Framewor
 
 ## Setup
 
-Requires Node 18+ and Mimo LLM credentials.
+Requires Node 18+ and OpenAI-compatible LLM credentials.
 
 ```bash
 npm install
@@ -20,9 +20,9 @@ cp .env.example .env.local
 ```
 
 ```bash
-LLM_API_URL=https://token-plan-sgp.xiaomimimo.com/v1/chat/completions
+LLM_API_URL=<your-endpoint>
 LLM_API_KEY=<your-key>
-LLM_MODEL=mimo-v2.5
+LLM_MODEL=<your-model>
 NEXT_PUBLIC_SUPABASE_URL=<your-url>          # public read
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>     # public read
 SUPABASE_SERVICE_ROLE_KEY=<service-key>      # server-only write (never to browser)
@@ -118,7 +118,7 @@ tokens, ~2 minutes for BONK).
   chains them so total wall time can exceed it safely.
 - **CoinGecko public-tier rate limits:** unauthenticated calls throttle
   (HTTP 429); fetchers degrade to error strings analysts handle honestly.
-- **Reasoning-model latency:** Vercel runs use fast `mimo-v2.5`; the pro
+- **Reasoning-model latency:** Vercel runs use a fast model; the pro
   reasoning model stays local-only.
 - **Thin data for new tokens:** low liquidity and short history make signals
   unreliable. Gaps render as MISSING with lower confidence.
@@ -128,7 +128,7 @@ tokens, ~2 minutes for BONK).
 ## Vercel Deploy
 
 1. Connect the repo (framework preset Next.js, defaults).
-2. Add env vars: `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL=mimo-v2.5`,
+2. Add env vars: `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL`,
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
    `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL=https://<domain>`,
    `CHAIN_SECRET=<random-32-chars>`, plus `ARIES_TOKEN_ADDRESS=<mainnet-0x>`
