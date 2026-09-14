@@ -13,7 +13,11 @@ Requires Node 18+ and Mimo LLM credentials.
 npm install
 ```
 
-Create `.env.local` in the repo root:
+Create `.env.local` in the repo root (see `.env.example` for all vars):
+
+```bash
+cp .env.example .env.local
+```
 
 ```bash
 LLM_API_URL=https://token-plan-sgp.xiaomimimo.com/v1/chat/completions
@@ -24,6 +28,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>     # public read
 SUPABASE_SERVICE_ROLE_KEY=<service-key>      # server-only write (never to browser)
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 CHAIN_SECRET=<random-32-chars>               # layer chain HMAC (any secret works locally)
+# Hold-gate (opsi B): empty = fee mode. Set mainnet $ARIES to enable.
+ARIES_TOKEN_ADDRESS=                         # 0x... mainnet, plus HOOD_MAINNET_RPC/HOLD_TIER1/HOLD_TIER2
 ```
 
 Create table `reports` once (Supabase SQL editor or any postgres client):
@@ -125,5 +131,6 @@ tokens, ~2 minutes for BONK).
 2. Add env vars: `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL=mimo-v2.5`,
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
    `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL=https://<domain>`,
-   `CHAIN_SECRET=<random-32-chars>`. Upstash vars optional (rate limit).
+   `CHAIN_SECRET=<random-32-chars>`, plus `ARIES_TOKEN_ADDRESS=<mainnet-0x>`
+   to enable hold-gate (empty = fee mode). Upstash vars optional (rate limit).
 3. Every push rebuilds and publishes.
