@@ -1,3 +1,6 @@
+import { neon } from "@neondatabase/serverless";
+import type { SqlFn } from "./db";
+
 export const FEE_VAULT_TESTNET = "0xc652d3602d255c58c9e1a9658ad64dc5636c1707";
 export const FEE_PRICE_WEI = BigInt("100000000000000"); // 0.0001 ETH
 export const FEE_CHAIN_ID = 46630;
@@ -11,9 +14,15 @@ interface FeeDeps {
   rpcUrl?: string;
   vault?: string;
   minWei?: bigint;
-  supabaseUrl?: string;
-  serviceKey?: string;
+  sql?: SqlFn;
   fetchFn?: typeof fetch;
+}
+
+function getSql(injected?: SqlFn): SqlFn | null {
+  if (injected) return injected;
+  const url = process.env.DATABASE_URL;
+  if (!url) return null;
+  return neon(url) as unknown as SqlFn;
 }
 
 function cfg(deps: FeeDeps) {
@@ -21,8 +30,7 @@ function cfg(deps: FeeDeps) {
     rpcUrl: deps.rpcUrl ?? process.env.HOOD_TESTNET_RPC ?? "https://robinhood-sepolia-rpc.publicnode.com",
     vault: (deps.vault ?? process.env.FEE_VAULT_ADDRESS ?? FEE_VAULT_TESTNET).toLowerCase(),
     minWei: deps.minWei ?? BigInt(process.env.FEE_MIN_WEI ?? "100000000000000"),
-    supabaseUrl: deps.supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
-    serviceKey: deps.serviceKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY,
+    sql: getSql(deps.sql),
     fetchFn: deps.fetchFn ?? fetch,
   };
 }
@@ -47,7 +55,7 @@ export async function verifyPayment(
     const c = cfg(deps);
     if (typeof payTx !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(payTx)) return { ok: false, reason: "Missing payment tx" };
     if (typeof wallet !== "string" || wallet.length < 20) return { ok: false, reason: "Missing wallet" };
-    if (!c.vault || !c.supabaseUrl || !c.serviceKey) return { ok: false, reason: "Fee system not configured" };
+    if (!c.vault || !c.sql) return { ok: false, reason: "Fee system not configured" };
 
     const data = (await rpc(c.fetchFn, c.rpcUrl, "eth_getTransactionReceipt", [payTx])) as {
       result?: { status?: string; to?: string; from?: string } | null;
@@ -69,11 +77,9 @@ export async function verifyPayment(
   }
 }
 
-async function alreadyUsed(fetchFn: typeof fetch, supabaseUrl: string, serviceKey: string, payTx: string): Promise<boolean> {
-  const head = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
-  const seen = await fetchFn(`${supabaseUrl}/rest/v1/payments?tx_hash=eq.${encodeURIComponent(payTx)}&select=tx_hash`, { headers: head });
-  if (!seen.ok) throw new Error("ledger unreachable");
-  return ((await seen.json()) as unknown[]).length > 0;
+async function alreadyUsed(sql: SqlFn, payTx: string): Promise<boolean> {
+  const rows = (await sql`select tx_hash from payments where tx_hash = ${payTx}`) as unknown[];
+  return rows.length > 0;
 }
 
 // Burn a verified payment (single-use). Never throws (returns reason).
@@ -85,15 +91,14 @@ export async function consumePayment(
 ): Promise<FeeCheck> {
   try {
     const c = cfg(deps);
-    if (!c.supabaseUrl || !c.serviceKey) return { ok: false, reason: "Fee system not configured" };
-    const head = { apikey: c.serviceKey, Authorization: `Bearer ${c.serviceKey}` };
-    const ins = await c.fetchFn(`${c.supabaseUrl}/rest/v1/payments`, {
-      method: "POST",
-      headers: { ...head, "Content-Type": "application/json", Prefer: "return=minimal" },
-      body: JSON.stringify({ tx_hash: payTx, wallet: wallet.toLowerCase(), amount_wei: amountWei, used_at: new Date().toISOString() }),
-    });
-    if (!ins.ok && ins.status !== 409) return { ok: false, reason: "Payment ledger write failed" };
-    if (ins.status === 409) return { ok: false, reason: "Payment already used" };
+    if (!c.sql) return { ok: false, reason: "Fee system not configured" };
+    const rows = (await c.sql`
+      insert into payments (tx_hash, wallet, amount_wei, used_at)
+      values (${payTx}, ${wallet.toLowerCase()}, ${amountWei}, ${new Date().toISOString()})
+      on conflict (tx_hash) do nothing
+      returning tx_hash
+    `) as unknown[];
+    if (rows.length === 0) return { ok: false, reason: "Payment already used" };
     return { ok: true };
   } catch {
     return { ok: false, reason: "Payment ledger unreachable" };
@@ -110,7 +115,7 @@ export async function verifyAndConsumePayment(
   if (!v.ok || typeof payTx !== "string" || typeof wallet !== "string" || !v.amountWei) return v;
   const c = cfg(deps);
   try {
-    if (await alreadyUsed(c.fetchFn, c.supabaseUrl!, c.serviceKey!, payTx)) return { ok: false, reason: "Payment already used" };
+    if (await alreadyUsed(c.sql!, payTx)) return { ok: false, reason: "Payment already used" };
   } catch {
     return { ok: false, reason: "Payment ledger unreachable" };
   }

@@ -4,7 +4,7 @@ import { CHAINS, validateAddress } from "@/lib/chains";
 import { parseDecision } from "@/lib/decision";
 import type { ChatMessage } from "@/lib/llm";
 import { verifyChain } from "./chain";
-import { logEvent, saveReport } from "./supabase";
+import { logEvent, saveReport, type SqlFn } from "./db";
 import type { DebateTurn, L1Result, L3Result, L4Result } from "./types";
 
 const DECIDER_SYSTEM = "You are the Portfolio Manager. Decide fast from mini-reports, one debate, and the risk review. No tools. English.";
@@ -43,7 +43,7 @@ export async function runL4(
     risks: L3Result["risks"];
     chainToken: string;
   },
-  opts: { signal?: AbortSignal } = {}
+  opts: { signal?: AbortSignal; sql?: SqlFn } = {}
 ): Promise<L4Result> {
   if (!validateAddress(input.chain, input.mint)) throw new Error("Invalid address");
   if (!verifyChain(input.chainToken, "l3", input.chain, input.mint, input.risks)) throw new Error("Invalid layer chain");
@@ -78,8 +78,8 @@ export async function runL4(
     decision,
     rating: parsed.rating,
     confidence: parsed.confidence,
-  });
-  await logEvent("run_completed", input.wallet, id);
+  }, { sql: opts.sql });
+  await logEvent("run_completed", input.wallet, id, { sql: opts.sql });
   return { decision, rating: parsed.rating, confidence: parsed.confidence, id };
 }
 

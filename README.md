@@ -7,7 +7,7 @@ Research background: "TradingAgents: Multi-Agents LLM Financial Trading Framewor
 
 ## Setup
 
-Requires Node 18+ and OpenAI-compatible LLM credentials.
+Requires Node 18+, an OpenRouter API key (or any OpenAI-compatible LLM endpoint), and a Neon Postgres database.
 
 ```bash
 npm install
@@ -20,50 +20,19 @@ cp .env.example .env.local
 ```
 
 ```bash
-LLM_API_URL=<your-endpoint>
-LLM_API_KEY=<your-key>
-LLM_MODEL=<your-model>
-NEXT_PUBLIC_SUPABASE_URL=<your-url>          # public read
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>     # public read
-SUPABASE_SERVICE_ROLE_KEY=<service-key>      # server-only write (never to browser)
+LLM_API_URL=https://openrouter.ai/api/v1/chat/completions
+LLM_API_KEY=<your-openrouter-key>
+LLM_MODEL=<openrouter-model-slug, e.g. anthropic/claude-sonnet-4.5>
+DATABASE_URL=<your-neon-connection-string>   # from the Neon console (neon.tech)
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 CHAIN_SECRET=<random-32-chars>               # layer chain HMAC (any secret works locally)
 # Hold-gate: empty = fee mode. Set mainnet $ARIES to enable.
 ARIES_TOKEN_ADDRESS=                         # mainnet $ARIES, plus HOOD_MAINNET_RPC
 ```
 
-Create table `reports` once (Supabase SQL editor or any postgres client):
-
-```sql
-create table reports (
-  id uuid primary key default gen_random_uuid(),
-  mint text not null,
-  model text not null,
-  token jsonb not null,
-  reports jsonb not null,
-  debate jsonb not null,
-  risks jsonb not null,
-  decision text not null,
-  rating text,
-  confidence text,
-  created_at timestamptz not null default now(),
-  wallet text,
-  views integer not null default 0
-);
-alter table reports enable row level security;
-create policy "public read" on reports for select using (true);
-
-create table events (
-  id uuid primary key default gen_random_uuid(),
-  wallet text not null,
-  type text not null,
-  report_id uuid,
-  created_at timestamptz not null default now()
-);
-create index events_wallet_idx on events (wallet, created_at desc);
-alter table events enable row level security;
--- no policies: service key only, analytics stay private
-```
+Run `migrations/0001_init.sql` once against your Neon database (Neon SQL editor
+or `psql "$DATABASE_URL" -f migrations/0001_init.sql`) to create the `reports`,
+`events`, `usage`, and `payments` tables.
 
 Then start the dev server:
 
@@ -85,7 +54,7 @@ mint → token summary (DexScreener)
   → L2: bull vs bear debate (2 rounds)
   → L3: risk review (liquidity | rugpath | concentration, parallel)
   → L4: decider → final decision (RATING / CONFIDENCE / KEY RISKS / ...)
-  → saved to Supabase, share link /r/<id>
+  → saved to Neon, share link /r/<id>
 ```
 
 Each layer is one SSE endpoint (`POST /api/l1` … `POST /api/l4`), chained by
@@ -95,7 +64,7 @@ called out of order or forged — this also inherits the L1 rate limit
 progress events plus a final `result` event. Soft budgets: L1 <90s, L2 <180s,
 L3 <120s, L4 <60s — each under the Vercel Hobby 300s ceiling.
 
-Key files: `lib/layered/` (L1-L4 flow, chain, SSE, Supabase, reducer),
+Key files: `lib/layered/` (L1-L4 flow, chain, SSE, Neon db, reducer),
 `lib/agents/` (`runAnalyst` runtime + shared types), `lib/tools/`
 (dexscreener, rugcheck, coingecko fetchers + analyst tool lists),
 `app/api/l1-l4/route.ts`, `app/api/history/route.ts`,

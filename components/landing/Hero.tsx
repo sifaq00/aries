@@ -1,53 +1,141 @@
-"use client";
-
 import Link from "next/link";
-import Reveal from "./Reveal";
-import LayerStack from "./LayerStack";
+import { neon } from "@neondatabase/serverless";
+import { parseDecision } from "@/lib/decision";
+import styles from "./landing.module.css";
 
-export default function Hero() {
+interface ExampleReport {
+  id: string;
+  symbol: string;
+  chain: string | null;
+  rating: string;
+  confidence: string;
+  risks: string[];
+  thesis: string;
+  date: string;
+}
+
+const FALLBACK: ExampleReport = {
+  id: "9c222bb6-689b-4fb3-a9fc-9fcfaa7146d4",
+  symbol: "SIZE",
+  chain: "Solana",
+  rating: "Sell",
+  confidence: "low",
+  risks: [
+    "Unknown contract owner authority, unverifiable LP custody — open rug path",
+    "$30.7K total liquidity — high slippage on any exit",
+    "108 sells vs 84 buys over 24h — weak holder conviction",
+    "5 days old, unlisted on major aggregators",
+  ],
+  thesis:
+    "With liquidity insufficient to absorb even minor selling and no verifiable fundamentals, the risk/reward is decisively unfavorable. The recent price rebound is speculative noise in an illiquid pool.",
+  date: "Sep 10, 2026",
+};
+
+async function getExample(): Promise<ExampleReport> {
+  try {
+    const url = process.env.DATABASE_URL;
+    if (!url) return FALLBACK;
+    const sql = neon(url);
+    const rows = (await sql`
+      select id, chain, token, decision, created_at from reports
+      order by created_at desc
+      limit 1
+    `) as { id: string; chain?: string | null; token?: { symbol?: string }; decision?: string; created_at?: string }[];
+    const row = rows[0];
+    if (!row?.decision) return FALLBACK;
+    const parsed = parseDecision(row.decision);
+    if (!parsed.rating || !parsed.thesis) return FALLBACK;
+    return {
+      id: row.id,
+      symbol: row.token?.symbol ?? "?",
+      chain: row.chain ?? null,
+      rating: parsed.rating,
+      confidence: (parsed.confidence ?? "medium").toLowerCase(),
+      risks: parsed.risks.length > 0 ? parsed.risks.slice(0, 4) : FALLBACK.risks,
+      thesis: parsed.thesis,
+      date: new Date(row.created_at ?? Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    };
+  } catch {
+    return FALLBACK;
+  }
+}
+
+function ratingClass(rating: string): string {
+  const r = rating.toLowerCase();
+  if (r.includes("buy") || r.includes("overweight")) return styles.buy;
+  if (r.includes("hold")) return styles.hold;
+  return "";
+}
+
+export default async function Hero() {
+  const report = await getExample();
+
   return (
-    <section className="relative overflow-hidden" aria-labelledby="hero-title">
-      <div aria-hidden="true" className="land-grid pointer-events-none absolute inset-0" />
-      <div className="relative mx-auto grid max-w-6xl items-start gap-12 px-4 pt-14 pb-16 md:grid-cols-2 md:pt-20 md:pb-20">
-        <div className="text-center md:text-left">
-          <Reveal>
-            <p className="inline-flex items-center gap-2.5 border border-black/15 bg-white px-3 py-1.5 font-mono text-[10px] font-bold tracking-[0.24em] text-black uppercase shadow-[2px_2px_0_0_#16a34a]">
-              Autonomous token research squad
+    <div className={styles.hero}>
+      <div className={styles.wrap}>
+        <span className={styles.heroPill}>
+          <span className={styles.dot} /> Testnet demo is live
+        </span>
+        <h1 className={styles.heroTitle}>The research desk for any token.</h1>
+        <div className={styles.heroGrid}>
+          <div>
+            <p className={styles.lede}>
+              Paste a contract. Four analysts read it, two of them argue about what they found, a risk team reviews the fight — and you get a
+              verdict you can read, share, and disagree with.
             </p>
-          </Reveal>
-          <Reveal delay={90}>
-            <h1 id="hero-title" className="font-display mt-6 text-4xl leading-[1.04] font-black tracking-tight text-black sm:text-5xl">
-              Operational uncertainty, answered with <span className="bg-[#22c55e] px-2 text-black">working verdicts</span>.
-            </h1>
-          </Reveal>
-          <Reveal delay={180}>
-            <p className="mx-auto mt-5 max-w-lg font-mono text-sm leading-relaxed text-zinc-600 md:mx-0">
-              Aries runs a token research desk — one vertically-integrated stack from raw mint to finished report. Slice the layers to see
-              how it is built. Every run ends in a rating you can read, share and verify.
-            </p>
-          </Reveal>
-          <Reveal delay={260}>
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-3 md:justify-start">
-              <Link
-                href="/analyze"
-                className="group cursor-pointer rounded-md bg-[#22c55e] px-6 py-3 font-mono text-sm font-bold text-black transition-all duration-200 hover:bg-[#4ade80] active:scale-[0.98]"
-              >
-                See the work <span aria-hidden="true" className="inline-block transition-transform duration-200 group-hover:translate-x-1">→</span>
+            <div className={styles.heroActions}>
+              <Link className={styles.btn} href="/analyze">
+                Run an analysis
               </Link>
-              <a
-                href="#live"
-                className="cursor-pointer rounded-md border border-black/20 bg-transparent px-6 py-3 font-mono text-sm text-black transition-colors duration-200 hover:border-[#16a34a] hover:text-[#15803d]"
-              >
-                Watch it work ↓
-              </a>
+              <Link className={`${styles.btn} ${styles.btnQuiet}`} href={`/r/${report.id}`}>
+                Read a live report
+              </Link>
             </div>
-          </Reveal>
-        </div>
+            <p className={styles.heroFact}>
+              Every run: <strong>4 analysts, 2 debate rounds, 3 risk reviewers, 1 decider.</strong> Median full run is about 99 seconds, streamed
+              live while it thinks.
+            </p>
+          </div>
 
-        <Reveal delay={200} className="mx-auto w-full max-w-sm md:mx-0 md:max-w-none">
-          <LayerStack />
-        </Reveal>
+          <figure className={styles.report} aria-label="Example Aries report">
+            <div className={styles.reportHead}>
+              <span>
+                <b>Aries research</b> — report {report.id.slice(0, 8)}
+              </span>
+              <span>{report.date}</span>
+            </div>
+            <div className={styles.reportVerdict}>
+              <div className={`${styles.verdictWord} ${ratingClass(report.rating)}`}>{report.rating}</div>
+              <div className={styles.verdictMeta}>
+                <span>Confidence: {report.confidence}</span>
+                <span>
+                  Token: {report.symbol}
+                  {report.chain ? ` (${report.chain})` : ""}
+                </span>
+              </div>
+            </div>
+            <div className={styles.reportRisks}>
+              <h3>Key risks</h3>
+              <ul>
+                {report.risks.map((r) => {
+                  const [head, ...rest] = r.split(/\s+—\s+/);
+                  return (
+                    <li key={r}>
+                      {head}
+                      {rest.length > 0 ? <em> — {rest.join(" — ")}</em> : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+            <div className={styles.reportThesis}>&ldquo;{report.thesis}&rdquo;</div>
+            <div className={styles.reportFoot}>
+              <Link href={`/r/${report.id}`}>Read the full report</Link>
+              <span className={styles.stamp}>Not financial advice</span>
+            </div>
+          </figure>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }

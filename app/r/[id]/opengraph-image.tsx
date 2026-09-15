@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import fs from "node:fs";
 import path from "node:path";
 import { parseDecision } from "@/lib/decision";
-import { loadReport } from "@/lib/layered/supabase";
+import { loadReport } from "@/lib/layered/db";
 
 // Node.js runtime (default): reads runs/[id].json from disk at build time.
 // Edge runtime cannot use node:fs, so Edge is not an option here.

@@ -1,10 +1,31 @@
-function getEnv(): { url: string; key: string; model: string } {
+function getEnv(): { url: string; key: string; model: string; fallbackModels: string[] } {
   const missing = ["LLM_API_URL", "LLM_API_KEY", "LLM_MODEL"].filter((k) => !process.env[k]);
   if (missing.length > 0) throw new Error(`Missing ${missing.join(" / ")} environment variables`);
+  const fallbackModels = (process.env.LLM_MODEL_FALLBACKS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   return {
     url: process.env.LLM_API_URL!,
     key: process.env.LLM_API_KEY!,
     model: process.env.LLM_MODEL!,
+    fallbackModels,
+  };
+}
+
+// Primary model plus its fallback chain (e.g. free OpenRouter models rotate
+// through rate limits), in the order they should be tried for one call.
+function modelChain(): string[] {
+  const { model, fallbackModels } = getEnv();
+  return [model, ...fallbackModels];
+}
+
+// OpenRouter asks apps to identify themselves via these headers (leaderboard + rate-limit context).
+// Harmless no-ops against any other OpenAI-compatible endpoint.
+function providerHeaders(): Record<string, string> {
+  return {
+    "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL ?? "https://aries.app",
+    "X-Title": "Aries",
   };
 }
 
@@ -65,7 +86,7 @@ async function callLLM(body: LLMBody, attempt = 0, timeoutMs?: number, signal?: 
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, ...providerHeaders() },
       body: JSON.stringify(body),
       ...(combined ? { signal: combined } : {}),
     });
@@ -81,18 +102,39 @@ async function callLLM(body: LLMBody, attempt = 0, timeoutMs?: number, signal?: 
   }
 }
 
+// Tries each model in the chain in order (LLM_MODEL, then LLM_MODEL_FALLBACKS).
+// Free OpenRouter models get rate-limited or overloaded often, so a failure on
+// one model falls through to the next rather than failing the whole run.
+async function callWithModelFallback(
+  buildBody: (model: string) => LLMBody,
+  timeoutMs?: number,
+  signal?: AbortSignal
+): Promise<Response> {
+  const models = modelChain();
+  let lastErr: unknown;
+  for (const model of models) {
+    try {
+      return await callLLM(buildBody(model), 0, timeoutMs, signal);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") throw err;
+      if (signal?.aborted) throw err;
+      lastErr = err;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("All LLM models failed");
+}
+
 export async function invokeLLM(
   messages: ChatMessage[],
   opts: { tools?: ToolSpec[]; maxTokens?: number; timeoutMs?: number; signal?: AbortSignal } = {}
 ): Promise<LLMResult> {
-  const res = await callLLM(
-    {
-      model: getEnv().model,
+  const res = await callWithModelFallback(
+    (model) => ({
+      model,
       messages,
       tools: opts.tools,
       ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
-    },
-    0,
+    }),
     opts.timeoutMs,
     opts.signal
   );
@@ -112,15 +154,14 @@ export async function streamLLM(
   onChunk: (part: { content?: string; reasoning?: string }) => void,
   opts: { tools?: ToolSpec[]; maxTokens?: number; timeoutMs?: number; signal?: AbortSignal } = {}
 ): Promise<LLMResult> {
-  const res = await callLLM(
-    {
-      model: getEnv().model,
+  const res = await callWithModelFallback(
+    (model) => ({
+      model,
       messages,
       tools: opts.tools,
       stream: true,
       ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
-    },
-    0,
+    }),
     opts.timeoutMs,
     opts.signal
   );

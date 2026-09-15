@@ -1,5 +1,5 @@
 import { checkHold } from "@/lib/layered/hold";
-import { dailyUsage } from "@/lib/layered/supabase";
+import { dailyUsage } from "@/lib/layered/db";
 
 export const dynamic = "force-dynamic";
 

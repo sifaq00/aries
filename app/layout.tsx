@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Orbitron, JetBrains_Mono } from "next/font/google";
+import { Orbitron, JetBrains_Mono, Inter, Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { WalletProvider } from "@/context/WalletContext";
 import WalletModal from "@/components/WalletModal";
@@ -14,6 +14,20 @@ const mono = JetBrains_Mono({
   variable: "--font-gmono",
   subsets: ["latin"],
   weight: ["400", "500", "700"],
+});
+
+// Landing page only: distinct type system from the app shell above.
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+});
+
+const interTight = Inter_Tight({
+  variable: "--font-inter-tight",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -31,7 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${display.variable} ${mono.variable} h-full antialiased`}
+      className={`${display.variable} ${mono.variable} ${inter.variable} ${interTight.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <WalletProvider>

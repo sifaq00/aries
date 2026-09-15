@@ -1,6 +1,6 @@
 import { runL1 } from "@/lib/layered/l1";
 import { isChainId, validateAddress } from "@/lib/chains";
-import { bumpDailyUsage, dailyUsage, logEvent } from "@/lib/layered/supabase";
+import { bumpDailyUsage, dailyUsage, logEvent } from "@/lib/layered/db";
 import { checkHold } from "@/lib/layered/hold";
 import { consumePayment, verifyPayment } from "@/lib/layered/fees";
 import { emitResult, sseResponse } from "@/lib/layered/sse";

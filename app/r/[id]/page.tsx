@@ -7,7 +7,7 @@ import AgentCard from "@/components/AgentCard";
 import DebateCard from "@/components/DebateCard";
 import DecisionCard from "@/components/DecisionCard";
 import { parseDecision } from "@/lib/decision";
-import { bumpViews, loadReport } from "@/lib/layered/supabase";
+import { bumpViews, loadReport } from "@/lib/layered/db";
 import CopyThreadButton from "@/components/CopyThreadButton";
 import CopyLinkButton from "@/components/CopyLinkButton";
 import WalletButton from "@/components/WalletButton";

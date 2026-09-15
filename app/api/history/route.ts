@@ -1,4 +1,4 @@
-import { listHistory, walletStats } from "@/lib/layered/supabase";
+import { listHistory, walletStats } from "@/lib/layered/db";
 
 export const dynamic = "force-dynamic";
 

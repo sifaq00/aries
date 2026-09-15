@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { HistoryItem } from "@/lib/layered/supabase";
+import type { HistoryItem } from "@/lib/layered/db";
 
 export default function HistorySection({ wallet }: { wallet: string }) {
   const [items, setItems] = useState<HistoryItem[] | null>(null);
