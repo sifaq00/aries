@@ -190,7 +190,7 @@ export default function Analyze() {
                           ? "You are using Pro (Unlimited runs unlocked)"
                           : gate.tier === 1
                             ? `You are using Plus (${gate.left ?? 0} runs remaining today)`
-                            : `Free · Hold at least ${gate.tier1Display ?? "10,000"} ARIES to unlock Plus`}
+                            : `Free · Hold at least ${gate.tier1Display ?? "10,000"} ARIES to unlock Plus and run analysis`}
                       </span>
                     </span>
                     <span className="text-[10px] tracking-widest text-zinc-400 uppercase">
@@ -217,7 +217,7 @@ export default function Analyze() {
                         ? "You are using Pro · unlimited runs"
                         : gate.tier === 1
                           ? `You are using Plus · ${gate.left ?? "?"} runs left today`
-                          : `Hold at least ${gate.tier1Display ?? "10,000"} ARIES to unlock Plus`
+                          : `Hold at least ${gate.tier1Display ?? "10,000"} ARIES to unlock Plus and run analysis`
                       : null
                   }
                   onPay={(mint) => {
