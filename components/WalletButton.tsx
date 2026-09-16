@@ -15,12 +15,21 @@ export default function WalletButton() {
 
   const CHAIN_SYMBOLS: Record<string, string> = {
     "0x1": "ETH",
+    "1": "ETH",
     "0x38": "BNB",
+    "56": "BNB",
     "0x2105": "ETH",
+    "8453": "ETH",
     "0xb626": "ETH",
+    "46630": "ETH",
+    "0xb627": "ETH",
+    "46631": "ETH",
     "0x89": "POL",
+    "137": "POL",
     "0xa": "ETH",
+    "10": "ETH",
     "0xa4b1": "ETH",
+    "42161": "ETH",
   };
 
   const fetchBalance = async () => {
@@ -39,7 +48,7 @@ export default function WalletButton() {
           req({ method: "eth_chainId" }).catch(() => "0x1"),
           req({ method: "eth_getBalance", params: [address, "latest"] }),
         ]);
-        const symbol = CHAIN_SYMBOLS[String(chainId)] ?? "native";
+        const symbol = CHAIN_SYMBOLS[String(chainId).toLowerCase()] ?? "native";
         setBalance(`${(Number(BigInt(hex as string)) / 1e18).toFixed(4)} ${symbol}`);
         // Fee/hold token balances (mainnet $ARIES when configured).
         try {
@@ -55,10 +64,12 @@ export default function WalletButton() {
               const out = (await req({ method: "eth_call", params: [{ to: t.addr, data }, "latest"] })) as string;
               if (typeof out === "string" && out.startsWith("0x") && out.length > 2) {
                 const amt = Number(BigInt(out)) / 1e18;
-                if (amt > 0) rows.push(`${amt.toFixed(0)} ${t.label}`);
+                rows.push(`${amt.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${t.label}`);
+              } else {
+                rows.push(`0 ${t.label}`);
               }
             } catch {
-              // skip uncallable token
+              rows.push(`0 ${t.label}`);
             }
           }
           setTokenBal(rows.length ? rows.join(" · ") : null);
