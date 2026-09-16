@@ -24,6 +24,8 @@ export default function WalletButton() {
     "46630": "ETH",
     "0xb627": "ETH",
     "46631": "ETH",
+    "0x1237": "ETH",
+    "4663": "ETH",
     "0x89": "POL",
     "137": "POL",
     "0xa": "ETH",
