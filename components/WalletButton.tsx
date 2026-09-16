@@ -41,20 +41,25 @@ export default function WalletButton() {
         ]);
         const symbol = CHAIN_SYMBOLS[String(chainId)] ?? "native";
         setBalance(`${(Number(BigInt(hex as string)) / 1e18).toFixed(4)} ${symbol}`);
-        // Fee/hold token balances (test drill + mainnet $ARIES when configured).
+        // Fee/hold token balances (mainnet $ARIES when configured).
         try {
           const tokens = [
-            { addr: "0x901fc7e22b7bc7353c66f0344a521e6533bf665f", label: "ARDRILL" },
             ...(process.env.NEXT_PUBLIC_ARIES_TOKEN
               ? [{ addr: process.env.NEXT_PUBLIC_ARIES_TOKEN, label: "ARIES" }]
               : []),
           ];
           const rows: string[] = [];
           for (const t of tokens) {
-            const data = `0x70a08231${"0".repeat(24)}${address.slice(2).toLowerCase()}`;
-            const out = (await req({ method: "eth_call", params: [{ to: t.addr, data }, "latest"] })) as string;
-            const amt = Number(BigInt(out)) / 1e18;
-            if (amt > 0) rows.push(`${amt.toFixed(0)} ${t.label}`);
+            try {
+              const data = `0x70a08231${"0".repeat(24)}${address.slice(2).toLowerCase()}`;
+              const out = (await req({ method: "eth_call", params: [{ to: t.addr, data }, "latest"] })) as string;
+              if (typeof out === "string" && out.startsWith("0x") && out.length > 2) {
+                const amt = Number(BigInt(out)) / 1e18;
+                if (amt > 0) rows.push(`${amt.toFixed(0)} ${t.label}`);
+              }
+            } catch {
+              // skip uncallable token
+            }
           }
           setTokenBal(rows.length ? rows.join(" · ") : null);
         } catch {
