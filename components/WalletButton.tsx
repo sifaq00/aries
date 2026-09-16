@@ -9,6 +9,7 @@ export default function WalletButton() {
   const [copied, setCopied] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
   const [tokenBal, setTokenBal] = useState<string | null>(null);
+  const [tierInfo, setTierInfo] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const boxRef = useRef<HTMLDivElement | null>(null);
   const isEvm = address.startsWith("0x");
@@ -102,10 +103,25 @@ export default function WalletButton() {
       } else {
         setBalance("n/a");
       }
+
+      // Query access tier for hold-gate status
+      fetch(`/api/gate?wallet=${encodeURIComponent(address)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((g) => {
+          if (g?.mode === "hold") {
+            if (g.tier === 2) setTierInfo("Tier 2 · Unlimited");
+            else if (g.tier === 1) setTierInfo(`Tier 1 · ${g.left ?? "?"} left today`);
+            else setTierInfo("Tier 0 · Locked");
+          } else {
+            setTierInfo(null);
+          }
+        })
+        .catch(() => setTierInfo(null));
     } catch {
-      setBalance("n/a");
+      setBalance("error");
+    } finally {
+      setRefreshing(false);
     }
-    setRefreshing(false);
   };
 
   useEffect(() => {
@@ -209,6 +225,20 @@ export default function WalletButton() {
             <div className="mt-2 flex items-center justify-between rounded border border-zinc-800 bg-black px-2 py-1.5">
               <p className="font-mono text-[10px] tracking-wider text-zinc-500 uppercase">Tokens</p>
               <p className="font-mono text-xs font-bold text-[#22c55e]">{tokenBal}</p>
+            </div>
+          )}
+          {tierInfo && (
+            <div className="mt-2 flex items-center justify-between rounded border border-zinc-800 bg-black px-2 py-1.5">
+              <p className="font-mono text-[10px] tracking-wider text-zinc-500 uppercase">Access</p>
+              <p
+                className={`font-mono text-xs font-bold ${
+                  tierInfo.includes("Tier 2") || tierInfo.includes("Tier 1")
+                    ? "text-[#22c55e]"
+                    : "text-[#f59e0b]"
+                }`}
+              >
+                {tierInfo}
+              </p>
             </div>
           )}
           <a

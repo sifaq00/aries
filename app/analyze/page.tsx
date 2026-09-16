@@ -165,11 +165,39 @@ export default function Analyze() {
                 </ol>
               </div>
               <SectionPanel index="//" title="Target lock" meta="mainnet">
-                {!connected && (
+                {!connected ? (
                   <p className="mb-3 rounded border border-[#22c55e]/40 bg-[#22c55e]/5 px-3 py-2 font-mono text-xs text-zinc-300">
                     Connect your wallet (Solana or EVM) to run analysis — reports save to your wallet history.
                   </p>
-                )}
+                ) : gate.mode === "hold" ? (
+                  <div
+                    className={`mb-3 flex items-center justify-between rounded border px-3 py-2 font-mono text-xs ${
+                      gate.tier === 2
+                        ? "border-[#22c55e]/40 bg-[#22c55e]/10 text-[#22c55e]"
+                        : gate.tier === 1
+                          ? "border-[#22c55e]/40 bg-[#22c55e]/5 text-zinc-200"
+                          : "border-[#f59e0b]/40 bg-[#f59e0b]/5 text-[#f59e0b]"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          gate.tier === 2 || gate.tier === 1 ? "bg-[#22c55e]" : "bg-[#f59e0b]"
+                        }`}
+                      />
+                      <span>
+                        {gate.tier === 2
+                          ? "You are using Tier 2 (Unlimited runs unlocked)"
+                          : gate.tier === 1
+                            ? `You are using Tier 1 (${gate.left ?? 0} runs remaining today)`
+                            : `Tier 0 · Hold at least ${gate.tier1Display ?? "10,000"} ARIES to unlock runs`}
+                      </span>
+                    </span>
+                    <span className="text-[10px] tracking-widest text-zinc-400 uppercase">
+                      {gate.tier === 2 ? "TIER 2" : gate.tier === 1 ? "TIER 1" : "LOCKED"}
+                    </span>
+                  </div>
+                ) : null}
                 <MintForm
                   disabled={paying}
                   chain={chain}
@@ -186,9 +214,9 @@ export default function Analyze() {
                   holdNote={
                     gate.mode === "hold"
                       ? gate.tier === 2
-                        ? "Tier 2 · unlimited runs"
+                        ? "You are using Tier 2 · unlimited runs"
                         : gate.tier === 1
-                          ? `Tier 1 · ${gate.left ?? "?"} runs left today`
+                          ? `You are using Tier 1 · ${gate.left ?? "?"} runs left today`
                           : `Hold at least ${gate.tier1Display ?? "10,000"} ARIES to unlock runs`
                       : null
                   }
