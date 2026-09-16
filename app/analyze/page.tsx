@@ -75,7 +75,10 @@ export default function Analyze() {
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
   const [verifying, setVerifying] = useState(false);
-  const [gate, setGate] = useState<{ mode: "fee" } | { mode: "hold"; tier: number; left?: number }>({ mode: "fee" });
+  const [gate, setGate] = useState<
+    | { mode: "fee" }
+    | { mode: "hold"; tier: number; left?: number; tier1Display?: string }
+  >({ mode: "fee" });
   const isEvmWallet = connected && address.startsWith("0x");
 
   /* eslint-disable react-hooks/set-state-in-effect -- external gate fetch per wallet */
@@ -88,7 +91,12 @@ export default function Analyze() {
     fetch(`/api/gate?wallet=${encodeURIComponent(address)}`)
       .then((r) => (r.ok ? r.json() : { mode: "fee" }))
       .then((g) => {
-        if (alive) setGate(g.mode === "hold" ? { mode: "hold", tier: g.tier ?? -1, left: g.left } : { mode: "fee" });
+        if (alive)
+          setGate(
+            g.mode === "hold"
+              ? { mode: "hold", tier: g.tier ?? -1, left: g.left, tier1Display: g.tier1Display }
+              : { mode: "fee" }
+          );
       })
       .catch(() => {
         if (alive) setGate({ mode: "fee" });
@@ -181,7 +189,7 @@ export default function Analyze() {
                         ? "Tier 2 · unlimited runs"
                         : gate.tier === 1
                           ? `Tier 1 · ${gate.left ?? "?"} runs left today`
-                          : "Hold at least 10,000 ARIES to unlock runs"
+                          : `Hold at least ${gate.tier1Display ?? "10,000"} ARIES to unlock runs`
                       : null
                   }
                   onPay={(mint) => {

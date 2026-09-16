@@ -12,12 +12,27 @@ interface HoldDeps {
   fetchFn?: typeof fetch;
 }
 
+export function getTierConfig() {
+  const tier1Amount = process.env.HOLD_TIER1 ?? "10000";
+  const tier2Amount = process.env.HOLD_TIER2 ?? "100000";
+  const rawDaily = parseInt(process.env.HOLD_TIER1_DAILY_LIMIT ?? "5", 10);
+  const dailyLimit = Number.isFinite(rawDaily) && rawDaily > 0 ? rawDaily : 5;
+  return {
+    tier1Amount,
+    tier2Amount,
+    dailyLimit,
+    tier1Display: Number(tier1Amount).toLocaleString("en-US"),
+    tier2Display: Number(tier2Amount).toLocaleString("en-US"),
+  };
+}
+
 function cfg(deps: HoldDeps) {
+  const decimals = BigInt(process.env.HOLD_TOKEN_DECIMALS ?? "18");
   return {
     rpcUrl: deps.rpcUrl ?? process.env.HOOD_MAINNET_RPC ?? "https://rpc.mainnet.chain.robinhood.com",
     token: deps.token ?? process.env.ARIES_TOKEN_ADDRESS ?? "",
-    tier1: deps.tier1 ?? BigInt(process.env.HOLD_TIER1 ?? "10000") * BigInt(10) ** BigInt(18),
-    tier2: deps.tier2 ?? BigInt(process.env.HOLD_TIER2 ?? "100000") * BigInt(10) ** BigInt(18),
+    tier1: deps.tier1 ?? BigInt(process.env.HOLD_TIER1 ?? "10000") * BigInt(10) ** decimals,
+    tier2: deps.tier2 ?? BigInt(process.env.HOLD_TIER2 ?? "100000") * BigInt(10) ** decimals,
     fetchFn: deps.fetchFn ?? fetch,
   };
 }

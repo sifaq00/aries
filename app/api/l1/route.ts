@@ -1,7 +1,7 @@
 import { runL1 } from "@/lib/layered/l1";
 import { isChainId, validateAddress } from "@/lib/chains";
 import { bumpDailyUsage, dailyUsage, logEvent } from "@/lib/layered/db";
-import { checkHold } from "@/lib/layered/hold";
+import { checkHold, getTierConfig } from "@/lib/layered/hold";
 import { consumePayment, verifyPayment } from "@/lib/layered/fees";
 import { emitResult, sseResponse } from "@/lib/layered/sse";
 
@@ -52,10 +52,11 @@ export async function POST(req: Request) {
     if (typeof wallet !== "string") return Response.json({ error: "Wallet required" }, { status: 402 });
     const hold = await checkHold(wallet);
     holdTier = hold.tier;
+    const config = getTierConfig();
     if (hold.tier === -1) return Response.json({ error: "Hold check unavailable, retry shortly" }, { status: 503 });
-    if (hold.tier === 0) return Response.json({ error: "Hold at least 10,000 ARIES to analyze" }, { status: 402 });
-    if (hold.tier === 1 && (await dailyUsage(wallet)) >= 5) {
-      return Response.json({ error: "Daily limit reached (5/day). Hold 100,000 ARIES for unlimited." }, { status: 429 });
+    if (hold.tier === 0) return Response.json({ error: `Hold at least ${config.tier1Display} ARIES to analyze` }, { status: 402 });
+    if (hold.tier === 1 && (await dailyUsage(wallet)) >= config.dailyLimit) {
+      return Response.json({ error: `Daily limit reached (${config.dailyLimit}/day). Hold ${config.tier2Display} ARIES for unlimited.` }, { status: 429 });
     }
   } else if (process.env.FEE_ENFORCED !== "0") {
     const fee = await verifyPayment(payTx, wallet);
