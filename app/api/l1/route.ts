@@ -54,9 +54,9 @@ export async function POST(req: Request) {
     holdTier = hold.tier;
     const config = getTierConfig();
     if (hold.tier === -1) return Response.json({ error: "Hold check unavailable, retry shortly" }, { status: 503 });
-    if (hold.tier === 0) return Response.json({ error: `Hold at least ${config.tier1Display} ARIES to analyze` }, { status: 402 });
+    if (hold.tier === 0) return Response.json({ error: `Hold at least ${config.tier1Display} ARIES to unlock Plus` }, { status: 402 });
     if (hold.tier === 1 && (await dailyUsage(wallet)) >= config.dailyLimit) {
-      return Response.json({ error: `Daily limit reached (${config.dailyLimit}/day). Hold ${config.tier2Display} ARIES for unlimited.` }, { status: 429 });
+      return Response.json({ error: `Plus daily limit reached (${config.dailyLimit}/day). Hold ${config.tier2Display} ARIES for Pro unlimited.` }, { status: 429 });
     }
   } else if (process.env.FEE_ENFORCED !== "0") {
     const fee = await verifyPayment(payTx, wallet);

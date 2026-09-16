@@ -187,14 +187,14 @@ export default function Analyze() {
                       />
                       <span>
                         {gate.tier === 2
-                          ? "You are using Tier 2 (Unlimited runs unlocked)"
+                          ? "You are using Pro (Unlimited runs unlocked)"
                           : gate.tier === 1
-                            ? `You are using Tier 1 (${gate.left ?? 0} runs remaining today)`
-                            : `Tier 0 · Hold at least ${gate.tier1Display ?? "10,000"} ARIES to unlock runs`}
+                            ? `You are using Plus (${gate.left ?? 0} runs remaining today)`
+                            : `Free · Hold at least ${gate.tier1Display ?? "10,000"} ARIES to unlock Plus`}
                       </span>
                     </span>
                     <span className="text-[10px] tracking-widest text-zinc-400 uppercase">
-                      {gate.tier === 2 ? "TIER 2" : gate.tier === 1 ? "TIER 1" : "LOCKED"}
+                      {gate.tier === 2 ? "PRO" : gate.tier === 1 ? "PLUS" : "LOCKED"}
                     </span>
                   </div>
                 ) : null}
@@ -214,10 +214,10 @@ export default function Analyze() {
                   holdNote={
                     gate.mode === "hold"
                       ? gate.tier === 2
-                        ? "You are using Tier 2 · unlimited runs"
+                        ? "You are using Pro · unlimited runs"
                         : gate.tier === 1
-                          ? `You are using Tier 1 · ${gate.left ?? "?"} runs left today`
-                          : `Hold at least ${gate.tier1Display ?? "10,000"} ARIES to unlock runs`
+                          ? `You are using Plus · ${gate.left ?? "?"} runs left today`
+                          : `Hold at least ${gate.tier1Display ?? "10,000"} ARIES to unlock Plus`
                       : null
                   }
                   onPay={(mint) => {

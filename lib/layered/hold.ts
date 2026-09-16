@@ -21,6 +21,8 @@ export function getTierConfig() {
     tier1Amount,
     tier2Amount,
     dailyLimit,
+    tier1Name: "Plus",
+    tier2Name: "Pro",
     tier1Display: Number(tier1Amount).toLocaleString("en-US"),
     tier2Display: Number(tier2Amount).toLocaleString("en-US"),
   };

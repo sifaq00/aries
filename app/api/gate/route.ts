@@ -18,6 +18,8 @@ export async function GET(req: Request) {
       tier: 1 as const,
       left: Math.max(0, config.dailyLimit - used),
       dailyLimit: config.dailyLimit,
+      tier1Name: config.tier1Name,
+      tier2Name: config.tier2Name,
       tier1Display: config.tier1Display,
       tier2Display: config.tier2Display,
     });
@@ -26,6 +28,8 @@ export async function GET(req: Request) {
     mode: "hold" as const,
     tier: hold.tier,
     dailyLimit: config.dailyLimit,
+    tier1Name: config.tier1Name,
+    tier2Name: config.tier2Name,
     tier1Display: config.tier1Display,
     tier2Display: config.tier2Display,
   });

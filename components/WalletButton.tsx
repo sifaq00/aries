@@ -109,9 +109,9 @@ export default function WalletButton() {
         .then((r) => (r.ok ? r.json() : null))
         .then((g) => {
           if (g?.mode === "hold") {
-            if (g.tier === 2) setTierInfo("Tier 2 · Unlimited");
-            else if (g.tier === 1) setTierInfo(`Tier 1 · ${g.left ?? "?"} left today`);
-            else setTierInfo("Tier 0 · Locked");
+            if (g.tier === 2) setTierInfo("Pro · Unlimited");
+            else if (g.tier === 1) setTierInfo(`Plus · ${g.left ?? "?"} left today`);
+            else setTierInfo("Free · Locked");
           } else {
             setTierInfo(null);
           }
