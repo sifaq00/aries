@@ -167,7 +167,7 @@ export default function Analyze() {
               <SectionPanel index="//" title="Target lock" meta="mainnet">
                 {!connected ? (
                   <p className="mb-3 rounded border border-[#22c55e]/40 bg-[#22c55e]/5 px-3 py-2 font-mono text-xs text-zinc-300">
-                    Connect your wallet (Solana or EVM) to run analysis — reports save to your wallet history.
+                    Connect your EVM wallet to run analysis — reports save to your wallet history.
                   </p>
                 ) : gate.mode === "hold" ? (
                   <div

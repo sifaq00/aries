@@ -7,7 +7,7 @@ const FAQS = [
   },
   {
     q: "Do I need a wallet?",
-    a: "Yes. Connect a Solana or EVM wallet to run an analysis. Reports save to your wallet history automatically.",
+    a: "Yes. Connect an EVM wallet (holding $ARIES) to run an analysis. Reports save to your wallet history automatically.",
   },
   {
     q: "What does a run cost?",
